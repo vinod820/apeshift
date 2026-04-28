@@ -1,5 +1,6 @@
 import { accountsTransform } from "./accounts/index.js";
 import { cleanupTransform } from "./cleanup/index.js";
+import { configTransform } from "./config/index.js";
 import { containerTransform } from "./container/index.js";
 import { contractsTransform } from "./contracts/index.js";
 import { eventsTransform } from "./events/index.js";
@@ -26,6 +27,7 @@ export const transforms = [
   numericTransform,
   containerTransform,
   testingTransform,
+  configTransform,
   cleanupTransform,
   manualReviewTransform,
 ];

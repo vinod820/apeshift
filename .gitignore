@@ -1,8 +1,11 @@
 node_modules/
 dist/
 benchmark-cache/
-test-repos/
-test-results/migrated/
+test-repos/*
+test-results/migrated/*
+test-results/benchmark-results.json
+!test-repos/.gitkeep
+!test-results/migrated/.gitkeep
 *.log
 .env
 .venv/
