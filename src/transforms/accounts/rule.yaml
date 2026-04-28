@@ -75,17 +75,3 @@ url: "https://docs.apeworx.io/ape/stable/userguides/accounts.html"
 metadata:
   transformGroup: "accounts"
   zeroFalsePositivePolicy: "The TypeScript engine preserves accounts[$INDEX] inside pytest functions that receive the Ape accounts fixture."
----
-id: apeshift-accounts-add-private-key
-language: Python
-message: Replace Brownie private-key account construction with Ape account alias load plus manual import TODO.
-severity: warning
-rule:
-  pattern: accounts.add(config["wallets"]["from_key"])
-fix: "accounts.load(\"migrated-account\")  # TODO(apeshift): import config[\"wallets\"][\"from_key\"] with `ape accounts import migrated-account`"
-files:
-  - "**/*.py"
-url: "https://docs.apeworx.io/ape/stable/userguides/accounts.html"
-metadata:
-  transformGroup: "accounts"
-  zeroFalsePositivePolicy: "Account alias choice is intentionally left as a TODO because copying private keys into config is unsafe."

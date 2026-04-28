@@ -11,6 +11,20 @@ url: "https://docs.apeworx.io/ape/stable/userguides/contracts.html"
 metadata:
   transformGroup: "manual-review"
 ---
+id: apeshift-manual-accounts-add
+language: Python
+message: Flag accounts.add() because Ape live accounts must be imported and loaded by alias.
+severity: warning
+rule:
+  pattern: accounts.add($$$ARGS)
+fix: "accounts.add($$$ARGS)  # TODO(apeshift): accounts.add(key) not valid in Ape; use accounts.load(\"account-name\") after: ape accounts import <name>"
+files:
+  - "**/*.py"
+url: "https://docs.apeworx.io/ape/stable/userguides/accounts.html"
+metadata:
+  transformGroup: "manual-review"
+  zeroFalsePositivePolicy: "Account aliases are human choices; ApeShift flags accounts.add() without selecting an alias."
+---
 id: apeshift-manual-positional-events
 language: Python
 message: Flag positional event access for manual Ape event migration.

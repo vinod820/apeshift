@@ -138,10 +138,6 @@ function convertAccounts(source: string): TransformResult {
     count += 1;
     return `accounts.test_accounts[${index}]`;
   });
-  next = next.replace(/\baccounts\.add\(\)/g, () => {
-    count += 1;
-    return "accounts.test_accounts.generate_test_account()";
-  });
   if (count > 0) next = ensureApeImport(next, ["accounts"]);
   return { source: next, count };
 }

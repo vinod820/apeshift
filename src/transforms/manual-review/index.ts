@@ -20,6 +20,13 @@ export const manualReviewTransform: TransformModule = {
           count += 1;
           return appendTodo(line, "# TODO(apeshift): verify ContractLogicError replacement");
         }
+        if (/\baccounts\.add\([^)]*\)/.test(line) && !line.includes("TODO(apeshift)")) {
+          count += 1;
+          return appendTodo(
+            line,
+            '# TODO(apeshift): accounts.add(key) not valid in Ape; use accounts.load("account-name") after: ape accounts import <name>',
+          );
+        }
         return line;
       })
       .join("\n");
