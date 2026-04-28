@@ -68,17 +68,3 @@ files:
 url: "https://docs.apeworx.io/ape/stable/userguides/scripts.html"
 metadata:
   transformGroup: "manual-review"
----
-id: apeshift-manual-dependency-remapping
-language: YAML
-message: Flag dependency remapping for manual Ape dependency source-layout verification.
-severity: warning
-rule:
-  regex: ".*@chainlink=.*|.*@openzeppelin=.*"
-fix: "$0 # TODO(apeshift): verify Ape dependency name/version/source layout"
-files:
-  - "ape-config.yaml"
-  - "brownie-config.yaml"
-url: "https://docs.apeworx.io/ape/stable/userguides/config.html"
-metadata:
-  transformGroup: "manual-review"

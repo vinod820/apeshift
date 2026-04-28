@@ -60,9 +60,3 @@ nodes:
             - "**/*.py"
             - "**/*.yaml"
             - "**/*.yml"
-      - name: "ApeShift config transform"
-        ast-grep:
-          config_file: "src/transforms/config/rule.yaml"
-          include:
-            - "**/*.yaml"
-            - "**/*.yml"

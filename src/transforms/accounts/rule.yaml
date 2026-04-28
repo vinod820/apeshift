@@ -3,7 +3,7 @@ language: Python
 message: Replace Brownie deploy sender dict with Ape sender keyword.
 severity: warning
 rule:
-  pattern: $CONTRACT.deploy($$$ARGS, {'from': $ACCOUNT})
+  pattern: "$CONTRACT.deploy($$$ARGS, {'from': $ACCOUNT})"
 constraints:
   ACCOUNT:
     kind: identifier
@@ -19,7 +19,7 @@ language: Python
 message: Replace Brownie call sender dict with Ape sender keyword.
 severity: warning
 rule:
-  pattern: $CONTRACT.$FN($$$ARGS, {'from': $ACCOUNT})
+  pattern: "$CONTRACT.$FN($$$ARGS, {'from': $ACCOUNT})"
 constraints:
   ACCOUNT:
     kind: identifier
@@ -35,7 +35,7 @@ language: Python
 message: Replace Brownie sender/value dict with Ape keywords.
 severity: warning
 rule:
-  pattern: $CONTRACT.$FN($$$ARGS, {'from': $ACCOUNT, 'value': $VALUE})
+  pattern: "$CONTRACT.$FN($$$ARGS, {'from': $ACCOUNT, 'value': $VALUE})"
 constraints:
   ACCOUNT:
     kind: identifier
@@ -51,7 +51,7 @@ language: Python
 message: Replace Brownie sender/gas_limit dict with Ape keywords.
 severity: warning
 rule:
-  pattern: $CONTRACT.$FN($$$ARGS, {'from': $ACCOUNT, 'gas_limit': $GAS})
+  pattern: "$CONTRACT.$FN($$$ARGS, {'from': $ACCOUNT, 'gas_limit': $GAS})"
 constraints:
   ACCOUNT:
     kind: identifier
@@ -82,7 +82,7 @@ message: Replace Brownie private-key account construction with Ape account alias
 severity: warning
 rule:
   pattern: accounts.add(config["wallets"]["from_key"])
-fix: accounts.load("migrated-account")  # TODO(apeshift): import config["wallets"]["from_key"] with `ape accounts import migrated-account`
+fix: "accounts.load(\"migrated-account\")  # TODO(apeshift): import config[\"wallets\"][\"from_key\"] with `ape accounts import migrated-account`"
 files:
   - "**/*.py"
 url: "https://docs.apeworx.io/ape/stable/userguides/accounts.html"
