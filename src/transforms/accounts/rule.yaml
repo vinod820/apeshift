@@ -11,6 +11,8 @@ fix: $CONTRACT.deploy($$$ARGS, sender=$ACCOUNT)
 files:
   - "**/*.py"
 url: "https://docs.apeworx.io/ape/stable/userguides/contracts.html"
+metadata:
+  transformGroup: "transactions"
 ---
 id: apeshift-sender-dict-call-from
 language: Python
@@ -25,6 +27,8 @@ fix: $CONTRACT.$FN($$$ARGS, sender=$ACCOUNT)
 files:
   - "**/*.py"
 url: "https://docs.apeworx.io/ape/stable/userguides/contracts.html"
+metadata:
+  transformGroup: "transactions"
 ---
 id: apeshift-sender-dict-call-from-value
 language: Python
@@ -39,6 +43,8 @@ fix: $CONTRACT.$FN($$$ARGS, value=$VALUE, sender=$ACCOUNT)
 files:
   - "**/*.py"
 url: "https://docs.apeworx.io/ape/stable/userguides/contracts.html"
+metadata:
+  transformGroup: "transactions"
 ---
 id: apeshift-sender-dict-call-from-gas-limit
 language: Python
@@ -53,3 +59,33 @@ fix: $CONTRACT.$FN($$$ARGS, gas_limit=$GAS, sender=$ACCOUNT)
 files:
   - "**/*.py"
 url: "https://docs.apeworx.io/ape/stable/userguides/contracts.html"
+metadata:
+  transformGroup: "transactions"
+---
+id: apeshift-accounts-index-script
+language: Python
+message: Replace Brownie script account index access with Ape test account access.
+severity: warning
+rule:
+  pattern: accounts[$INDEX]
+fix: accounts.test_accounts[$INDEX]
+files:
+  - "**/*.py"
+url: "https://docs.apeworx.io/ape/stable/userguides/accounts.html"
+metadata:
+  transformGroup: "accounts"
+  zeroFalsePositivePolicy: "The TypeScript engine preserves accounts[$INDEX] inside pytest functions that receive the Ape accounts fixture."
+---
+id: apeshift-accounts-add-private-key
+language: Python
+message: Replace Brownie private-key account construction with Ape account alias load plus manual import TODO.
+severity: warning
+rule:
+  pattern: accounts.add(config["wallets"]["from_key"])
+fix: accounts.load("migrated-account")  # TODO(apeshift): import config["wallets"]["from_key"] with `ape accounts import migrated-account`
+files:
+  - "**/*.py"
+url: "https://docs.apeworx.io/ape/stable/userguides/accounts.html"
+metadata:
+  transformGroup: "accounts"
+  zeroFalsePositivePolicy: "Account alias choice is intentionally left as a TODO because copying private keys into config is unsafe."

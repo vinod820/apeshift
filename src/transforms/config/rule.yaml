@@ -1,0 +1,13 @@
+id: apeshift-brownie-config-file
+language: YAML
+message: Brownie config requires Ape config migration.
+severity: warning
+rule:
+  regex: "(?s).*"
+files:
+  - "brownie-config.yaml"
+  - "brownie-config.yml"
+url: "https://docs.apeworx.io/ape/stable/userguides/config.html"
+metadata:
+  transformGroup: "config"
+  zeroFalsePositivePolicy: "Config conversion is handled by ApeShift's project-level generator; dependency source-layout issues are reported, not guessed."

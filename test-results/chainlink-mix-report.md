@@ -1,8 +1,8 @@
 # chainlink-mix Migration Report
 
-## Fresh pattern counts (this run)
-- Before: 9
-- After: 0
+## Fresh pattern counts
+- Before: 104
+- After: 4
 
 ## Syntax check result
 PASS
@@ -11,7 +11,13 @@ PASS
 None ✅
 
 ## TODO comments added
-1
+7
 
 ## Runtime safety verdict
 ✅ SAFE
+
+## Real Ape runtime validation
+- Environment: Ape 0.8.48, Python 3.11.15
+- `ape compile`: FAIL
+- `ape test`: FAIL
+- Classification: DEPENDENCY_SOURCE_LAYOUT_BLOCKED

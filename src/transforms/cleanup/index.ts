@@ -115,9 +115,11 @@ function ensureExceptionImport(source: string): string {
 function convertSenderDicts(source: string): TransformResult {
   let count = 0;
   const patterns: Array<[RegExp, string]> = [
-    [/,?\s*\{\s*["']from["']\s*:\s*([^,}\n]+)\s*,\s*["']value["']\s*:\s*([^}\n]+)\s*\}/g, ", sender=$1, value=$2"],
-    [/,?\s*\{\s*["']value["']\s*:\s*([^,}\n]+)\s*,\s*["']from["']\s*:\s*([^}\n]+)\s*\}/g, ", value=$1, sender=$2"],
-    [/,?\s*\{\s*["']from["']\s*:\s*([^}\n]+)\s*\}/g, ", sender=$1"],
+    [/,?\s*\{\s*["']from["']\s*:\s*([^,}\n]+)\s*,\s*["']value["']\s*:\s*([^,}\n]+)\s*\}/g, ", value=$2, sender=$1"],
+    [/,?\s*\{\s*["']value["']\s*:\s*([^,}\n]+)\s*,\s*["']from["']\s*:\s*([^,}\n]+)\s*\}/g, ", value=$1, sender=$2"],
+    [/,?\s*\{\s*["']from["']\s*:\s*([^,}\n]+)\s*,\s*["']gas_limit["']\s*:\s*([^,}\n]+)\s*\}/g, ", gas_limit=$2, sender=$1"],
+    [/,?\s*\{\s*["']from["']\s*:\s*([^,}\n]+)\s*,\s*["']gas_price["']\s*:\s*([^,}\n]+)\s*\}/g, ", gas_price=$2, sender=$1"],
+    [/,?\s*\{\s*["']from["']\s*:\s*([^,}\n]+)\s*\}/g, ", sender=$1"],
   ];
   let next = source;
   for (const [pattern, replacement] of patterns) {
@@ -126,7 +128,7 @@ function convertSenderDicts(source: string): TransformResult {
       return replacement.replace(/\$(\d+)/g, (_token, index) => args[Number(index)] ?? "");
     });
   }
-  next = next.replace(/\(\s*,\s*sender=/g, "(sender=");
+  next = next.replace(/\(\s*,\s*(sender|value|gas_limit|gas_price)=/g, "($1=");
   return { source: next, count };
 }
 

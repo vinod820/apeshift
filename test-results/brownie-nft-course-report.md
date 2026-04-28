@@ -1,8 +1,8 @@
 # brownie-nft-course Migration Report
 
-## Fresh pattern counts (this run)
-- Before: 7
-- After: 0
+## Fresh pattern counts
+- Before: 76
+- After: 11
 
 ## Syntax check result
 PASS
@@ -15,3 +15,9 @@ None ✅
 
 ## Runtime safety verdict
 ✅ SAFE
+
+## Real Ape runtime validation
+- Environment: Ape 0.8.48, Python 3.11.15
+- `ape compile`: FAIL
+- `ape test`: FAIL
+- Classification: DEPENDENCY_SOURCE_LAYOUT_BLOCKED

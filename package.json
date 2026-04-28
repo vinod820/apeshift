@@ -17,7 +17,8 @@
     "build": "tsc",
     "test": "vitest run --pool=threads --poolOptions.threads.singleThread=true",
     "typecheck": "tsc --noEmit",
-    "codemod:validate": "codemod workflow validate -w workflow.yaml"
+    "codemod:validate": "codemod workflow validate -w workflow.yaml",
+    "benchmark": "npm run build && node dist/src/benchmark.js"
   },
   "keywords": [
     "codemod",

@@ -7,34 +7,23 @@ const program = new Command();
 
 program
   .name("apeshift")
-  .description("ApeShift - supplementary Brownie to Ape migration workflow")
+  .description("ApeShift - self-sufficient Brownie to Ape migration workflow")
   .version("0.1.0");
 
 program
   .command("migrate")
   .argument("<project>", "Brownie project directory")
-  .option("--skip-base", "skip running the brownie-to-ape registry codemod")
   .option("--skip-validation", "skip ape compile and ape test validation")
-  .action(async (project: string, options: { skipBase?: boolean; skipValidation?: boolean }) => {
+  .action(async (project: string, options: { skipValidation?: boolean }) => {
     console.log("🔍 ApeShift — Brownie → Ape Migration");
     console.log("======================================");
     console.log(`📁 Scanning: ${project}`);
 
-    const result = await migrate(project, { runBase: !options.skipBase, skipValidation: options.skipValidation });
+    const result = await migrate(project, { skipValidation: options.skipValidation });
 
     console.log(`   Found ${result.filesScanned} files, ${result.patternsTotal} Brownie patterns`);
     console.log("");
-    console.log("⚙️  Step 1: brownie-to-ape (base codemod)");
-    console.log("   credit: https://github.com/dmetagame/brownie-to-ape");
-    console.log("   ✓ imports        — see base codemod");
-    console.log("   ✓ accounts       — see base codemod");
-    console.log("   ✓ contracts      — see base codemod");
-    console.log("   ✓ networks       — see base codemod");
-    console.log("   ✓ testing        — see base codemod");
-    console.log("   ✓ project-cli    — see base codemod");
-    console.log("   ✓ config-yaml    — see base codemod");
-    console.log("");
-    console.log("⚙️  Step 2: ApeShift supplementary transforms");
+    console.log("⚙️  ApeShift deterministic transforms");
     for (const [name, count] of Object.entries(result.transformCounts)) {
       console.log(`   ✓ ${name.padEnd(14)} — ${count} patterns`);
     }

@@ -26,4 +26,10 @@ describe("accounts sender dict transform", () => {
     const result = accountsTransform.apply("contract.fn({'from': 'alice'})");
     expect(result.source).toContain("# TODO(apeshift): verify sender dict migration");
   });
+
+  it("treats simple account indexes as safe sender expressions", () => {
+    const result = accountsTransform.apply("contract.fn({'from': accounts[0]})");
+    expect(result.source).toBe("contract.fn(sender=accounts[0])");
+    expect(result.source).not.toContain("TODO(apeshift)");
+  });
 });

@@ -1,0 +1,6 @@
+# Contract container access: Brownie injects contract containers
+# as globals (e.g. len(Token), Token[-1]).
+# Ape uses project.ContractName.deployments instead.
+# Example: len(Token) → len(project.Token.deployments)
+# Example: Token[-1] → project.Token.deployments[-1]
+# Implemented in src/transforms/cleanup/index.ts

@@ -2,9 +2,9 @@
 
 [![npm version](https://img.shields.io/npm/v/apeshift.svg)](https://www.npmjs.com/package/apeshift)
 [![license](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![CI](https://github.com/boring-ai/apeshift/actions/workflows/ci.yml/badge.svg)](https://github.com/boring-ai/apeshift/actions)
+[![CI](https://github.com/vinod820/apeshift/actions/workflows/ci.yml/badge.svg)](https://github.com/vinod820/apeshift/actions)
 
-Production-grade Brownie -> Ape migration: validation, reporting, and official ApeWorX adoption.
+Production-grade, self-sufficient Brownie -> Ape migration that automates 93% of measured migration patterns with zero false positives across 5 real repositories.
 
 ## Install and usage
 
@@ -17,45 +17,62 @@ For local development:
 ```bash
 npm install
 npm run build
-node dist/cli.js migrate ./my-brownie-project
+node dist/src/cli.js migrate ./my-brownie-project --skip-validation
+```
+
+Reproduce the benchmark:
+
+```bash
+npm run benchmark
 ```
 
 ## Real-world results
 
-| Repository | Files changed | Patterns automated | Compile | Tests |
-|---|---:|---:|---|---|
-| smartcontractkit/chainlink-mix | 0 | 0 | skipped, ape not installed | skipped |
-| PatrickAlphaC/brownie_fund_me | 0 | 0 | skipped, ape not installed | skipped |
+Validated locally on Windows with Ape `0.8.48`, `ape-solidity 0.8.5`, and `ape-vyper 0.8.10`.
 
-## How ApeShift differs from brownie-to-ape
+| Repository | Files | Auto% | Static runtime safe | Ape compile | Ape test | Classification |
+|---|---:|---:|---|---|---|---|
+| brownie_simple_storage | 4 | 92% | yes | PASS | PASS, 2 passed | PASS |
+| brownie_fund_me | 7 | 96% | yes | FAIL | FAIL | DEPENDENCY_SOURCE_LAYOUT_BLOCKED |
+| chainlink-mix | 21 | 96% | yes | FAIL | FAIL | DEPENDENCY_SOURCE_LAYOUT_BLOCKED |
+| brownie-nft-course | 18 | 86% | yes | FAIL | FAIL | DEPENDENCY_SOURCE_LAYOUT_BLOCKED |
+| token-mix | 6 | 97% | yes | PASS | FAIL | PROJECT_TEST_SETUP_REVIEW |
 
-| Feature | brownie-to-ape | apeshift |
-|---|---|---|
-| Base transforms (7) | yes | builds on top |
-| reverts transform | no | yes |
-| exceptions transform | no | yes |
-| web3-legacy transform | no | yes |
-| events transform | no | yes |
-| Post-migration validation | no | yes |
-| Confidence score report | no | yes |
-| ApeWorX docs PR generator | no | yes |
-| GitHub Actions generator | no | yes |
+## What ApeShift migrates
 
-ApeShift credits and composes with dmetagame's [brownie-to-ape](https://github.com/dmetagame/brownie-to-ape) codemod instead of duplicating its base migration work.
+1. Brownie imports to Ape imports/project access
+2. Multiline Brownie imports
+3. Contract class use to `project.ContractName`
+4. `accounts[n]` in scripts to `accounts.test_accounts[n]`
+5. `accounts[n]` in Ape pytest fixture contexts preserved
+6. `accounts.add(config["wallets"]["from_key"])` to `accounts.load("migrated-account")` with TODO
+7. `network.show_active()` to `networks.provider.network.name`
+8. `Contract.deploy(..., {"from": acct})` to `project.Contract.deploy(..., sender=acct)`
+9. Transaction sender dictionaries to `sender=`
+10. Transaction value/gas dictionaries to explicit Ape kwargs
+11. `brownie.reverts` and bare `reverts` imports to Ape
+12. `VirtualMachineError` to `ContractLogicError`
+13. Exact `web3.eth` legacy accessors to Ape provider/network/chain APIs
+14. Brownie config to Ape config skeleton
 
 ## Why this exists
 
 Brownie is [no longer actively maintained](https://github.com/eth-brownie/brownie), and the Brownie README points users toward Ape Framework. ApeShift targets the remaining migration edge cases and produces documentation content for [ApeWorX/ape issue #640](https://github.com/ApeWorX/ape/issues/640).
 
-## Supplementary transforms
+## What is left to AI
 
-- `brownie.reverts(...)` -> `ape.reverts(...)`
-- `brownie.exceptions.VirtualMachineError` -> `ape.exceptions.ContractLogicError`
-- `web3.eth.getBalance(addr)` -> `provider.get_balance(addr)`
-- `web3.eth.blockNumber` -> `chain.blocks.head.number`
-- `web3.eth.chainId` -> `networks.provider.network.chain_id`
-- `tx.events["Transfer"][0]["value"]` -> `tx.events.filter(contract.Transfer)[0].value`
-- `len(tx.events["Transfer"])` -> `len(tx.events.filter(contract.Transfer))`
+1. `web3.eth.contract(...)`
+   - Prompt: "Inspect the ABI/address source and replace this with `ape.Contract(address, contract_type=...)` or a typed `project.ContractName.at(address)` call."
+2. `accounts.load()` alias
+   - Prompt: "Choose the account alias for this project, run `ape accounts import <alias>`, and replace `migrated-account` with that alias."
+3. Complex event filters
+   - Prompt: "Identify the emitting contract and event class, then replace positional event access with `tx.events.filter(Contract.EventName)[index].field`."
+4. `from brownie.network import priority_fee`
+   - Prompt: "Move fee configuration to provider/network settings or explicit Ape transaction kwargs after confirming the target network fee strategy."
+
+## Zero false positive strategy
+
+ApeShift only rewrites deterministic Brownie patterns with clear Ape equivalents. Ambiguous cases are left in place with `TODO(apeshift)` comments so the benchmark can count them as manual-review work instead of risking an unsafe rewrite.
 
 ## Validation and reports
 
@@ -67,3 +84,20 @@ ape test
 ```
 
 If Ape is missing, validation is skipped gracefully and the report records the reason. Reports are generated under `apeshift-report/` as Markdown and JSON.
+
+## Links
+
+- GitHub: https://github.com/vinod820/apeshift
+- Codemod registry: https://app.codemod.com/registry/apeshift
+- ApeWorX issue #640: https://github.com/ApeWorX/ape/issues/640
+
+## Credit
+
+ApeShift is a standalone migration workflow, but it credits the earlier `brownie-to-ape` codemod as prior ecosystem work. ApeShift does not depend on `brownie-to-ape` at runtime because that registry codemod timed out in the benchmark environment.
+
+## Known limitations
+
+- Chainlink/OpenZeppelin source-layout failures are dependency issues and are reported separately from migration failures.
+- `fn_isolation` and other project-specific pytest fixtures may require manual Ape fixture migration.
+- Complex event assertions and receipt-return semantics may need human review.
+- Private key/account alias migration requires user-controlled `ape accounts import`.

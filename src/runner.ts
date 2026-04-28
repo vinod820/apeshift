@@ -1,6 +1,5 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { execa } from "execa";
 import { generatePrContent } from "./pr-generator.js";
 import { generateReport } from "./reporter.js";
 import { transforms } from "./transforms/index.js";
@@ -50,34 +49,6 @@ async function countBrowniePatterns(files: string[]): Promise<number> {
   }
 
   return count;
-}
-
-async function runBaseCodemod(projectDir: string): Promise<void> {
-  try {
-    await execa("npx", ["codemod", "brownie-to-ape", "-t", projectDir], {
-      cwd: projectDir,
-      stdio: "ignore",
-      timeout: 30_000,
-    });
-  } catch {
-    await stopBaseCodemodChildren(projectDir);
-    console.log("⚠️  brownie-to-ape base codemod timed out or unavailable — running ApeShift transforms only");
-  }
-}
-
-async function stopBaseCodemodChildren(projectDir: string): Promise<void> {
-  if (process.platform !== "win32") return;
-  const escaped = projectDir.replace(/'/g, "''");
-  const command = [
-    "Get-CimInstance Win32_Process",
-    `Where-Object { $_.CommandLine -like '*brownie-to-ape*' -and $_.CommandLine -like '*${escaped}*' -and ($_.Name -match 'node|codemod') }`,
-    "ForEach-Object { Stop-Process -Id $_.ProcessId -Force }",
-  ].join(" | ");
-  try {
-    await execa("powershell", ["-NoProfile", "-Command", command], { stdio: "ignore", timeout: 5_000 });
-  } catch {
-    // Best-effort cleanup only; migration continues in degraded mode.
-  }
 }
 
 function parseImportNames(line: string, moduleName: string): string[] | null {
@@ -133,8 +104,108 @@ async function cleanupBaseCodemodOutput(files: string[]): Promise<void> {
 
 function cleanupRuntimeSafetyByPath(file: string, source: string): string {
   const normalized = file.replace(/\\/g, "/");
-  if (!/\/tests?\//.test(normalized)) return source;
-  return source.replace(/\baccounts\.test_accounts\[(\d+)\]/g, "accounts[$1]");
+  let next = source.replace(/^\s*[A-Za-z_][A-Za-z0-9_]*\.wait\([^)\n]*\)\s*$/gm, "");
+  next = next.replace(/\b(\d+)e(\d+)\b/g, (_match, coefficient: string, exponent: string) => `${coefficient} * 10**${exponent}`);
+  next = next.replace(/\blen\(([A-Z][A-Za-z0-9_]*)\)/g, (_match, contract: string) => `len(project.${contract}.deployments)`);
+  next = next.replace(
+    /(LOCAL_BLOCKCHAIN_ENVIRONMENTS\s*=\s*\[)([^\]\n]*)(\])/g,
+    (match, prefix: string, values: string, suffix: string) =>
+      values.includes('"local"') || values.includes("'local'") ? match : `${prefix}${values}, "local"${suffix}`,
+  );
+  if (!/\/tests?\//.test(normalized)) return next;
+  next = next.replace(/^(\s*def\s+[A-Za-z_][A-Za-z0-9_]*\()([^)]*)(\):)$/gm, (_line, start: string, rawArgs: string, end: string) => {
+    const args = rawArgs
+      .split(",")
+      .map((arg) => arg.trim())
+      .filter((arg) => arg && !/^[A-Z][A-Za-z0-9_]*$/.test(arg));
+    return `${start}${args.join(", ")}${end}`;
+  });
+  if (/\bdef\s+[A-Za-z_][A-Za-z0-9_]*\([^)]*\baccounts\b/.test(next)) {
+    next = next.replace(/\baccounts\.test_accounts\[(\d+)\]/g, "accounts[$1]");
+  }
+  return next;
+}
+
+async function ensurePythonPathConftest(projectDir: string): Promise<void> {
+  try {
+    await fs.access(path.join(projectDir, "scripts"));
+  } catch {
+    return;
+  }
+
+  const conftestPath = path.join(projectDir, "conftest.py");
+  try {
+    await fs.access(conftestPath);
+    return;
+  } catch {
+    await fs.writeFile(
+      conftestPath,
+      [
+        "import sys",
+        "from pathlib import Path",
+        "",
+        "ROOT = Path(__file__).resolve().parent",
+        "if str(ROOT) not in sys.path:",
+        "    sys.path.insert(0, str(ROOT))",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+  }
+}
+
+function dependencyAlias(repository: string): string {
+  const repo = repository.split("/").pop() ?? repository;
+  return repo
+    .replace(/[^A-Za-z0-9_]/g, "_");
+}
+
+function convertBrownieConfigToApe(source: string): string {
+  const dependencyMatches = [...source.matchAll(/^\s*-\s*([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)@([^\s#]+)\s*$/gm)];
+  const dependencies = dependencyMatches.map((match) => {
+    const repository = match[1] ?? "";
+    const version = match[2] ?? "";
+    return { name: dependencyAlias(repository), repository, version };
+  });
+
+  const remappingMatches = [...source.matchAll(/^\s*-\s*["']?([^=\s"']+)=([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)@([^"'\s]+)["']?\s*$/gm)];
+  const remappings = remappingMatches.map((match) => {
+    const prefix = match[1] ?? "";
+    const repository = match[2] ?? "";
+    const version = match[3] ?? "";
+    return `    - "${prefix}=${dependencyAlias(repository)}/v${version}"`;
+  });
+
+  const lines = ["name: migrated-ape-project", "plugins:", "  - name: solidity"];
+  if (dependencies.length > 0) {
+    lines.push("dependencies:");
+    for (const dependency of dependencies) {
+      lines.push(`  - name: ${dependency.name}`);
+      lines.push(`    github: ${dependency.repository}`);
+      lines.push(`    version: ${dependency.version}`);
+    }
+  }
+  if (remappings.length > 0) {
+    lines.push("solidity:");
+    lines.push("  import_remapping:");
+    lines.push(...remappings);
+  }
+  lines.push("ethereum:");
+  lines.push("  default_network: local");
+  lines.push("# TODO: Brownie `wallets.from_key` is intentionally not copied.");
+  lines.push("# Import the key once with `ape accounts import <alias>` and use `accounts.load(\"<alias>\")`.");
+  return `${lines.join("\n")}\n`;
+}
+
+async function migrateConfigFile(projectDir: string): Promise<void> {
+  const brownieConfigPath = path.join(projectDir, "brownie-config.yaml");
+  const apeConfigPath = path.join(projectDir, "ape-config.yaml");
+  try {
+    const source = await fs.readFile(brownieConfigPath, "utf8");
+    await fs.writeFile(apeConfigPath, convertBrownieConfigToApe(source), "utf8");
+  } catch {
+    // Config migration is best-effort; many Brownie projects have no config.
+  }
 }
 
 function skippedValidationResult(skipReason: string): ValidationResult {
@@ -149,7 +220,7 @@ function skippedValidationResult(skipReason: string): ValidationResult {
   };
 }
 
-export async function migrate(projectDir: string, options: { runBase?: boolean; skipValidation?: boolean } = {}): Promise<MigrationResult> {
+export async function migrate(projectDir: string, options: { skipValidation?: boolean } = {}): Promise<MigrationResult> {
   const root = path.resolve(projectDir);
   const projectFiles = await listProjectFiles(root);
   const patternsTotal = await countBrowniePatterns(projectFiles);
@@ -158,10 +229,7 @@ export async function migrate(projectDir: string, options: { runBase?: boolean; 
   let filesChanged = 0;
   let patternsAutomated = 0;
 
-  if (options.runBase ?? true) {
-    await runBaseCodemod(root);
-    await cleanupBaseCodemodOutput(files);
-  }
+  await cleanupBaseCodemodOutput(files);
 
   for (const file of files) {
     const original = await fs.readFile(file, "utf8");
@@ -172,11 +240,15 @@ export async function migrate(projectDir: string, options: { runBase?: boolean; 
       transformCounts[transform.name] += result.count;
       patternsAutomated += result.count;
     }
-    if (source !== original) {
+    const finalSource = cleanupRuntimeSafetyByPath(file, source);
+    if (finalSource !== original) {
       filesChanged += 1;
-      await fs.writeFile(file, cleanupRuntimeSafetyByPath(file, source), "utf8");
+      await fs.writeFile(file, finalSource, "utf8");
     }
   }
+
+  await migrateConfigFile(root);
+  await ensurePythonPathConftest(root);
 
   const validation = options.skipValidation
     ? skippedValidationResult("validation skipped by --skip-validation")

@@ -1,7 +1,7 @@
 import type { TransformModule } from "../types.js";
 
 function identifier(value: string): boolean {
-  return /^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)?$/.test(value.trim());
+  return /^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)?(?:\[\d+\])?$/.test(value.trim());
 }
 
 export const accountsTransform: TransformModule = {

@@ -1,5 +1,13 @@
 node_modules/
 dist/
+benchmark-cache/
+test-repos/
+test-results/migrated/
+*.log
+.env
+.venv/
+__pycache__/
+*.pyc
 .tmp/
 .real-world/
 apeshift-report/

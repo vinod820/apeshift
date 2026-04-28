@@ -1,6 +1,6 @@
 id: apeshift-multiline-brownie-imports
 language: Python
-message: Replace multi-line Brownie imports with Ape imports for manual migration review.
+message: Replace multi-line Brownie imports with Ape imports for deterministic migration review.
 severity: warning
 rule:
   pattern: |
@@ -14,3 +14,20 @@ fix: |
 files:
   - "**/*.py"
 url: "https://ast-grep.github.io/guide/pattern-syntax.html"
+metadata:
+  transformGroup: "imports"
+  zeroFalsePositivePolicy: "The TypeScript engine splits Brownie runtime names from contract names; this jssg rule documents the precise import shape."
+---
+id: apeshift-single-line-brownie-imports
+language: Python
+message: Convert single-line Brownie imports to Ape/project access.
+severity: warning
+rule:
+  pattern: from brownie import $$$NAMES
+fix: from ape import $$$NAMES
+files:
+  - "**/*.py"
+url: "https://docs.apeworx.io/ape/stable/methoddocs/ape.html"
+metadata:
+  transformGroup: "imports"
+  zeroFalsePositivePolicy: "The local transform engine filters names to known Ape exports and project contract access before writing changes."

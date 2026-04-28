@@ -1,0 +1,6 @@
+# Brownie pytest testing helpers migration to Ape Framework.
+# Patterns: fn_isolation fixture removal, brownie.test.strategy,
+# chain.sleep → chain.mine_blocks, chain.snapshot/revert.
+# Conservative: only removes fn_isolation when safe to do so.
+# Ape handles test isolation natively via its pytest plugin.
+# Implemented in src/transforms/cleanup/index.ts

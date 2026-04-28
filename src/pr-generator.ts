@@ -27,13 +27,12 @@ Brownie is no longer actively maintained and its README recommends Ape Framework
 ## One-command migration
 
 \`\`\`bash
-npx codemod brownie-to-ape -t .
-npx codemod apeshift -t .
+npx apeshift migrate .
 \`\`\`
 
-Run the base \`brownie-to-ape\` codemod first, then run ApeShift for supplementary edge cases, validation, reports, and CI/docs artifacts.
+Run ApeShift for deterministic Brownie-to-Ape rewrites, validation, reports, and CI/docs artifacts.
 
-## Base brownie-to-ape coverage
+## ApeShift deterministic coverage
 
 ### Imports
 
@@ -173,7 +172,7 @@ export function prDescription(results: RealWorldResult[] = []): string {
 
 ## Summary
 
-Adds a Brownie to Ape migration guide for ApeWorX/ape and references issue #640. The guide covers the existing brownie-to-ape codemod path plus ApeShift supplementary transforms for reverts, VirtualMachineError, web3.eth legacy access, and event dictionary patterns.
+Adds a Brownie to Ape migration guide for ApeWorX/ape and references issue #640. The guide covers ApeShift deterministic transforms for imports, accounts, contracts, networks, reverts, VirtualMachineError, web3.eth legacy access, and event dictionary patterns.
 
 Closes #640.
 
@@ -187,7 +186,7 @@ ${resultsTable(results)}
 - [ ] I have added or updated documentation.
 - [ ] I have linked official Ape documentation where relevant.
 - [ ] I have tested the migration guide against real Brownie projects.
-- [ ] I have credited the existing brownie-to-ape codemod.
+- [ ] I have documented manual-review cases left by ApeShift.
 `;
 }
 

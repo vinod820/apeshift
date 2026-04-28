@@ -1,0 +1,4 @@
+# This transform is implemented in index.ts as TypeScript string
+# manipulation. No ast-grep rule applies — see index.ts for logic.
+# Patterns handled: import syntax cleanup, double comma removal,
+# trailing comma removal after partial import transformation.

@@ -10,15 +10,9 @@ params:
 
 nodes:
   - id: apeshift-migrate
-    name: Brownie to Ape migration with ApeShift validation
+    name: Self-sufficient Brownie to Ape migration with ApeShift validation
     type: automatic
     steps:
-      - name: "Run registry codemod: brownie-to-ape"
-        codemod:
-          source: "brownie-to-ape"
-          args:
-            - "-t"
-            - "${{ params.target }}"
       - name: "ApeShift multiline imports transform"
         ast-grep:
           config_file: "src/transforms/imports-multiline/rule.yaml"
@@ -27,6 +21,16 @@ nodes:
       - name: "ApeShift accounts sender dict transform"
         ast-grep:
           config_file: "src/transforms/accounts/rule.yaml"
+          include:
+            - "**/*.py"
+      - name: "ApeShift contracts transform"
+        ast-grep:
+          config_file: "src/transforms/contracts/rule.yaml"
+          include:
+            - "**/*.py"
+      - name: "ApeShift networks transform"
+        ast-grep:
+          config_file: "src/transforms/networks/rule.yaml"
           include:
             - "**/*.py"
       - name: "ApeShift reverts transform"
@@ -54,3 +58,11 @@ nodes:
           config_file: "src/transforms/manual-review/rule.yaml"
           include:
             - "**/*.py"
+            - "**/*.yaml"
+            - "**/*.yml"
+      - name: "ApeShift config transform"
+        ast-grep:
+          config_file: "src/transforms/config/rule.yaml"
+          include:
+            - "**/*.yaml"
+            - "**/*.yml"

@@ -72,4 +72,14 @@ describe("cleanup transform", () => {
     expect(result.source).toContain("web3_contract = Contract(address=addr, abi=abi)");
     expect(result.source).not.toContain("web3.eth.contract");
   });
+
+  it("rewrites gas_price sender dictionaries without invalid keyword ordering", () => {
+    const result = cleanupTransform.apply('project.Token.deploy("T", {"from": account, "gas_price": chain.base_fee})');
+    expect(result.source).toBe('project.Token.deploy("T", gas_price=chain.base_fee, sender=account)');
+  });
+
+  it("rewrites gas_price sender dictionaries when they are the only argument", () => {
+    const result = cleanupTransform.apply('project.Token.deploy({"from": account, "gas_price": chain.base_fee})');
+    expect(result.source).toBe("project.Token.deploy(gas_price=chain.base_fee, sender=account)");
+  });
 });
