@@ -51,4 +51,25 @@ describe("cleanup transform", () => {
     expect(result.source).toContain("fund_me.withdraw(sender=bad_actor)");
     expect(result.source).not.toContain("from brownie import");
   });
+
+  it("removes invalid interface and priority_fee runtime imports", () => {
+    const input = [
+      "from brownie import interface",
+      "from brownie.network import priority_fee",
+      "priority_fee('1 gwei')",
+      "token = interface.LinkTokenInterface(link_token.address)",
+    ].join("\n");
+    const result = cleanupTransform.apply(input);
+    expect(result.source).not.toContain("interface");
+    expect(result.source).not.toContain("from brownie.network import priority_fee");
+    expect(result.source).toContain("project.LinkTokenInterface.at(link_token.address)");
+    expect(result.source).toContain("TODO(apeshift)");
+  });
+
+  it("rewrites web3.eth.contract to Ape Contract factory", () => {
+    const result = cleanupTransform.apply("web3_contract = web3.eth.contract(address=addr, abi=abi)\n");
+    expect(result.source).toContain("from ape import Contract");
+    expect(result.source).toContain("web3_contract = Contract(address=addr, abi=abi)");
+    expect(result.source).not.toContain("web3.eth.contract");
+  });
 });

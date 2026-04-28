@@ -28,7 +28,7 @@ function parseImportNames(raw: string): string[] {
 
 function apeImportFor(names: string[]): string | null {
   const apeNames = names
-    .filter((name) => brownieNames.has(name) && !["exceptions", "reverts", "web3"].includes(name))
+    .filter((name) => brownieNames.has(name) && !["exceptions", "interface", "reverts", "web3"].includes(name))
     .map((name) => (name === "network" ? "networks" : name));
   if (apeNames.length === 0) return null;
   return `from ape import ${unique(apeNames).join(", ")}`;
@@ -158,6 +158,24 @@ function convertNetworks(source: string): TransformResult {
   return { source: next, count };
 }
 
+function convertPlainBrownieImports(source: string): TransformResult {
+  let count = 0;
+  let next = source.replace(/^import brownie$/gm, () => {
+    count += 1;
+    return "import ape";
+  });
+  next = next.replace(/^from brownie\.network import priority_fee$/gm, () => {
+    count += 1;
+    return "# TODO(apeshift): Ape does not export Brownie's priority_fee helper; configure gas fees via the active provider";
+  });
+  next = next.replace(/^\s*priority_fee\((.*)\)$/gm, (line) => {
+    count += 1;
+    const indent = line.match(/^\s*/)?.[0] ?? "";
+    return `${indent}# TODO(apeshift): replace Brownie priority_fee(${line.replace(/^\s*priority_fee\(|\)$/g, "")}) with Ape provider fee configuration`;
+  });
+  return { source: next, count };
+}
+
 function convertProjectDeploys(source: string): TransformResult {
   let count = 0;
   const next = source.replace(/(?<!\.)\b([A-Z][A-Za-z0-9_]*)\.deploy\(/g, (match, contract: string) => {
@@ -166,6 +184,24 @@ function convertProjectDeploys(source: string): TransformResult {
     return `project.${contract}.deploy(`;
   });
   return { source: count > 0 ? ensureApeImport(next, ["project"]) : next, count };
+}
+
+function convertInterfaceCalls(source: string): TransformResult {
+  let count = 0;
+  const next = source.replace(/\binterface\.([A-Za-z_][A-Za-z0-9_]*)\(([^)\n]+)\)/g, (_match, name: string, address: string) => {
+    count += 1;
+    return `project.${name}.at(${address})`;
+  });
+  return { source: count > 0 ? ensureApeImport(next, ["project"]) : next, count };
+}
+
+function convertWeb3ContractFactory(source: string): TransformResult {
+  let count = 0;
+  const next = source.replace(/\bweb3\.eth\.contract\(/g, () => {
+    count += 1;
+    return "Contract(";
+  });
+  return { source: count > 0 ? ensureApeImport(next, ["Contract"]) : next, count };
 }
 
 function convertContractNames(source: string): TransformResult {
@@ -235,7 +271,7 @@ function normalizeApeImports(source: string): TransformResult {
     }
     removed += 1;
     for (const name of parseImportNames(match[1] ?? "")) {
-      names.add(name);
+      if (name !== "interface") names.add(name);
     }
   }
 
@@ -247,8 +283,11 @@ function normalizeApeImports(source: string): TransformResult {
 
 const cleanupSteps = [
   convertSenderDicts,
+  convertPlainBrownieImports,
   convertAccounts,
   convertNetworks,
+  convertInterfaceCalls,
+  convertWeb3ContractFactory,
   convertContractNames,
   convertProjectDeploys,
   convertContractDeployments,

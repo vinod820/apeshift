@@ -131,6 +131,12 @@ async function cleanupBaseCodemodOutput(files: string[]): Promise<void> {
   }
 }
 
+function cleanupRuntimeSafetyByPath(file: string, source: string): string {
+  const normalized = file.replace(/\\/g, "/");
+  if (!/\/tests?\//.test(normalized)) return source;
+  return source.replace(/\baccounts\.test_accounts\[(\d+)\]/g, "accounts[$1]");
+}
+
 function skippedValidationResult(skipReason: string): ValidationResult {
   return {
     compileSuccess: false,
@@ -168,7 +174,7 @@ export async function migrate(projectDir: string, options: { runBase?: boolean; 
     }
     if (source !== original) {
       filesChanged += 1;
-      await fs.writeFile(file, source, "utf8");
+      await fs.writeFile(file, cleanupRuntimeSafetyByPath(file, source), "utf8");
     }
   }
 

@@ -12,10 +12,6 @@ export const manualReviewTransform: TransformModule = {
     const next = source
       .split(/\r?\n/)
       .map((line) => {
-        if (line.includes("web3.eth.contract(") && !line.includes("TODO(apeshift)")) {
-          count += 1;
-          return appendTodo(line, "# TODO(apeshift): replace with ape contract pattern");
-        }
         if (/tx\.events\[0\]\["[A-Za-z_][A-Za-z0-9_]*"\]/.test(line) && !line.includes("TODO(apeshift)")) {
           count += 1;
           return appendTodo(line, "# TODO(apeshift): use tx.events.filter(Contract.EventName)[0].field");

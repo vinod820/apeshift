@@ -1,7 +1,7 @@
-# brownie_simple_storage Migration Report
+# brownie-nft-course Migration Report
 
 ## Fresh pattern counts (this run)
-- Before: 0
+- Before: 7
 - After: 0
 
 ## Syntax check result
@@ -11,7 +11,7 @@ PASS
 None ✅
 
 ## TODO comments added
-0
+3
 
 ## Runtime safety verdict
 ✅ SAFE
