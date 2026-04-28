@@ -53,7 +53,7 @@ npm install && npm run benchmark
 3. Contract class use to `project.ContractName`
 4. `accounts[n]` in scripts to `accounts.test_accounts[n]`
 5. `accounts[n]` in Ape pytest fixture contexts preserved
-6. `accounts.add(config["wallets"]["from_key"])` to `accounts.load("migrated-account")` with TODO
+6. `accounts.add(...)` flagged with `TODO(apeshift)` because Ape live accounts must be imported and loaded by alias
 7. `network.show_active()` to `networks.provider.network.name`
 8. `Contract.deploy(..., {"from": acct})` to `project.Contract.deploy(..., sender=acct)`
 9. Transaction sender dictionaries to `sender=`
@@ -66,8 +66,8 @@ npm install && npm run benchmark
 ### What's left to AI (with instructions)
 1. `web3.eth.contract(...)`
    - Prompt: "Inspect the ABI/address source and replace this with `ape.Contract(address, contract_type=...)` or a typed `project.ContractName.at(address)` call."
-2. `accounts.load()` alias
-   - Prompt: "Choose the account alias for this project, run `ape accounts import <alias>`, and replace `migrated-account` with that alias."
+2. `accounts.add(...)` live-account migration
+   - Prompt: "Choose the account alias for this project, run `ape accounts import <alias>`, and replace `accounts.add(...)` with `accounts.load(<alias>)`."
 3. Complex event filters
    - Prompt: "Identify the emitting contract and event class, then replace positional event access with `tx.events.filter(Contract.EventName)[index].field`."
 4. `from brownie.network import priority_fee`

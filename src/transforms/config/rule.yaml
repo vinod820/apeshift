@@ -1,13 +1,4 @@
-id: apeshift-brownie-config-file
-language: YAML
-message: Brownie config requires Ape config migration.
-severity: warning
-rule:
-  regex: "(?s).*"
-files:
-  - "brownie-config.yaml"
-  - "brownie-config.yml"
-url: "https://docs.apeworx.io/ape/stable/userguides/config.html"
-metadata:
-  transformGroup: "config"
-  zeroFalsePositivePolicy: "Config conversion is handled by ApeShift's project-level generator; dependency source-layout issues are reported, not guessed."
+# Brownie config conversion is implemented in runner.ts.
+# No standalone ast-grep YAML rule is published because the registry
+# runner rejected the broad YAML regex used for detection-only review.
+# Dependency source-layout issues are reported, not guessed.

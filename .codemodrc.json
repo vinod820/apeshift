@@ -1,8 +1,8 @@
 {
   "$schema": "https://docs.codemod.com/schemas/codemodrc.json",
   "name": "apeshift",
-  "version": "0.1.0",
-  "description": "Supplementary Brownie to Ape migration workflow with validation, reports, and ApeWorX docs PR content.",
+  "version": "0.1.5",
+  "description": "Production-grade Brownie to Ape migration workflow with validation, reports, and ApeWorX docs PR content.",
   "license": "MIT",
   "workflow": "workflow.yaml",
   "entry": "dist/cli.js",

@@ -1,7 +1,7 @@
 schema_version: "1.0"
 
 name: "apeshift"
-version: "0.1.4"
+version: "0.1.5"
 description: "Production-grade Brownie to Ape Framework migration workflow."
 author: "Boring AI Hackathon"
 license: "MIT"

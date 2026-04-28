@@ -39,7 +39,7 @@ return accounts.add(config["wallets"]["from_key"])
 # After
 if networks.provider.network.name == "development":
     return accounts.test_accounts[0]
-return accounts.load("migrated-account")  # TODO: import config["wallets"]["from_key"] with `ape accounts import migrated-account`
+return accounts.add(config["wallets"]["from_key"])  # TODO(apeshift): accounts.add(key) not valid in Ape; use accounts.load("account-name") after: ape accounts import <name>
 ```
 
 Official docs: https://docs.apeworx.io/ape/stable/userguides/accounts.html

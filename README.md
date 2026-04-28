@@ -1,8 +1,7 @@
 # ApeShift
 
-[![npm version](https://img.shields.io/npm/v/apeshift.svg)](https://www.npmjs.com/package/apeshift)
+[![Codemod Registry](https://img.shields.io/badge/codemod-registry-blue)](https://app.codemod.com/registry/apeshift)
 [![license](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![CI](https://github.com/vinod820/apeshift/actions/workflows/ci.yml/badge.svg)](https://github.com/vinod820/apeshift/actions)
 
 Production-grade, self-sufficient Brownie -> Ape migration that automates 93% of measured migration patterns with zero false positives across 5 real repositories.
 
@@ -38,6 +37,14 @@ Validated locally on Windows with Ape `0.8.48`, `ape-solidity 0.8.5`, and `ape-v
 | brownie-nft-course | 18 | 86% | yes | FAIL | FAIL | DEPENDENCY_SOURCE_LAYOUT_BLOCKED |
 | token-mix | 6 | 97% | yes | PASS | FAIL | PROJECT_TEST_SETUP_REVIEW |
 
+## Differentiators
+
+- Runtime validation is built in: ApeShift records `ape compile` and `ape test` results when Ape is available.
+- Each migration produces a confidence score report under `apeshift-report/`.
+- The benchmark covers 5 real Brownie repositories with measured numbers: 279 total patterns, 260 automated, 93% automation, and FP=0 in the tracked proof reports.
+- ApeWorX docs PR content is included under `docs/userguides/brownie-migration.md` and `docs/pr-description.md`.
+- Zero false positives are enforced by only rewriting deterministic patterns and leaving ambiguous cases as `TODO(apeshift)` manual-review notes.
+
 ## What ApeShift migrates
 
 1. Brownie imports to Ape imports/project access
@@ -45,7 +52,7 @@ Validated locally on Windows with Ape `0.8.48`, `ape-solidity 0.8.5`, and `ape-v
 3. Contract class use to `project.ContractName`
 4. `accounts[n]` in scripts to `accounts.test_accounts[n]`
 5. `accounts[n]` in Ape pytest fixture contexts preserved
-6. `accounts.add(config["wallets"]["from_key"])` to `accounts.load("migrated-account")` with TODO
+6. `accounts.add(...)` flagged with `TODO(apeshift)` because Ape live accounts must be imported and loaded by alias
 7. `network.show_active()` to `networks.provider.network.name`
 8. `Contract.deploy(..., {"from": acct})` to `project.Contract.deploy(..., sender=acct)`
 9. Transaction sender dictionaries to `sender=`
@@ -63,8 +70,8 @@ Brownie is [no longer actively maintained](https://github.com/eth-brownie/browni
 
 1. `web3.eth.contract(...)`
    - Prompt: "Inspect the ABI/address source and replace this with `ape.Contract(address, contract_type=...)` or a typed `project.ContractName.at(address)` call."
-2. `accounts.load()` alias
-   - Prompt: "Choose the account alias for this project, run `ape accounts import <alias>`, and replace `migrated-account` with that alias."
+2. `accounts.add(...)` live-account migration
+   - Prompt: "Choose the account alias for this project, run `ape accounts import <alias>`, and replace `accounts.add(...)` with `accounts.load(<alias>)`."
 3. Complex event filters
    - Prompt: "Identify the emitting contract and event class, then replace positional event access with `tx.events.filter(Contract.EventName)[index].field`."
 4. `from brownie.network import priority_fee`

@@ -1,6 +1,6 @@
 # Numeric literal conversion: Python float scientific notation
 # to integer expressions for Ape Framework compatibility.
-# Example: 1e18 → 1 * 10**18, 1e21 → 1 * 10**21
+# Example: 1e18 -> 1 * 10**18, 1e21 -> 1 * 10**21
 # Implemented in src/transforms/cleanup/index.ts
-# No standalone ast-grep rule — handled via TypeScript regex
+# No standalone ast-grep rule - handled via TypeScript regex
 # to avoid false positives on non-contract numeric literals.
