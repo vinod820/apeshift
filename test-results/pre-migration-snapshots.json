@@ -1,0 +1,58 @@
+[
+    {
+        "repository":  "brownie_simple_storage",
+        "root":  "D:\\Boringai\\test-repos\\brownie_simple_storage",
+        "fromBrownieImport":  3,
+        "brownieDot":  1,
+        "brownieConfig":  0,
+        "patternsBefore":  4,
+        "brownieFiles":  [
+                             "D:\\Boringai\\test-repos\\brownie_simple_storage\\scripts\\deploy.py",
+                             "D:\\Boringai\\test-repos\\brownie_simple_storage\\scripts\\read_value.py",
+                             "D:\\Boringai\\test-repos\\brownie_simple_storage\\tests\\test_simple_storage.py"
+                         ]
+    },
+    {
+        "repository":  "brownie_fund_me",
+        "root":  "D:\\Boringai\\test-repos\\brownie_fund_me",
+        "fromBrownieImport":  5,
+        "brownieDot":  0,
+        "brownieConfig":  0,
+        "patternsBefore":  5,
+        "brownieFiles":  [
+                             "D:\\Boringai\\test-repos\\brownie_fund_me\\scripts\\deploy.py",
+                             "D:\\Boringai\\test-repos\\brownie_fund_me\\scripts\\deploy_mocks.py",
+                             "D:\\Boringai\\test-repos\\brownie_fund_me\\scripts\\fund_and_withdraw.py",
+                             "D:\\Boringai\\test-repos\\brownie_fund_me\\scripts\\helpful_scripts.py",
+                             "D:\\Boringai\\test-repos\\brownie_fund_me\\tests\\test_fund_me.py"
+                         ]
+    },
+    {
+        "repository":  "chainlink-mix",
+        "root":  "D:\\Boringai\\test-repos\\chainlink-mix",
+        "fromBrownieImport":  18,
+        "brownieDot":  2,
+        "brownieConfig":  0,
+        "patternsBefore":  20,
+        "brownieFiles":  [
+                             "D:\\Boringai\\test-repos\\chainlink-mix\\scripts\\helpful_scripts.py",
+                             "D:\\Boringai\\test-repos\\chainlink-mix\\scripts\\automation_scripts\\01_deploy_automation_counter.py",
+                             "D:\\Boringai\\test-repos\\chainlink-mix\\scripts\\automation_scripts\\02_check_upkeep.py",
+                             "D:\\Boringai\\test-repos\\chainlink-mix\\scripts\\chainlink_api_scripts\\01_deploy_api_consumer.py",
+                             "D:\\Boringai\\test-repos\\chainlink-mix\\scripts\\chainlink_api_scripts\\02_request_api.py",
+                             "D:\\Boringai\\test-repos\\chainlink-mix\\scripts\\chainlink_api_scripts\\03_read_data.py",
+                             "D:\\Boringai\\test-repos\\chainlink-mix\\scripts\\price_feed_scripts\\01_deploy_price_consumer_v3.py",
+                             "D:\\Boringai\\test-repos\\chainlink-mix\\scripts\\price_feed_scripts\\02_read_price_feed.py",
+                             "D:\\Boringai\\test-repos\\chainlink-mix\\scripts\\price_feed_scripts\\02_read_price_with_ens.py",
+                             "D:\\Boringai\\test-repos\\chainlink-mix\\scripts\\vrf_scripts\\01_deploy_vrf_consumer.py",
+                             "D:\\Boringai\\test-repos\\chainlink-mix\\scripts\\vrf_scripts\\02_request_randomness.py",
+                             "D:\\Boringai\\test-repos\\chainlink-mix\\scripts\\vrf_scripts\\03_read_random_number.py",
+                             "D:\\Boringai\\test-repos\\chainlink-mix\\scripts\\vrf_scripts\\create_subscription.py",
+                             "D:\\Boringai\\test-repos\\chainlink-mix\\tests\\conftest.py",
+                             "D:\\Boringai\\test-repos\\chainlink-mix\\tests\\test_api_consumer.py",
+                             "D:\\Boringai\\test-repos\\chainlink-mix\\tests\\test_automation.py",
+                             "D:\\Boringai\\test-repos\\chainlink-mix\\tests\\test_price_feeds.py",
+                             "D:\\Boringai\\test-repos\\chainlink-mix\\tests\\test_vrf_consumer.py"
+                         ]
+    }
+]

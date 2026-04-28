@@ -1,0 +1,45 @@
+{
+  "name": "apeshift",
+  "version": "0.1.0",
+  "description": "Production-grade Brownie to Ape migration: validation, reporting, and official ApeWorX adoption.",
+  "type": "module",
+  "bin": {
+    "apeshift": "./dist/src/cli.js"
+  },
+  "files": [
+    "dist",
+    "src/transforms/**/*.yaml",
+    "workflow.yaml",
+    ".codemodrc.json",
+    "docs"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run --pool=threads --poolOptions.threads.singleThread=true",
+    "typecheck": "tsc --noEmit",
+    "codemod:validate": "codemod workflow validate -w workflow.yaml"
+  },
+  "keywords": [
+    "codemod",
+    "jssg",
+    "ast-grep",
+    "brownie",
+    "ape",
+    "ethereum"
+  ],
+  "author": "Boring AI Hackathon",
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^12.1.0",
+    "execa": "^9.5.2",
+    "handlebars": "^4.7.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

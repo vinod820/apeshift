@@ -1,0 +1,14 @@
+id: apeshift-brownie-event-dict
+language: Python
+message: Replace exact Brownie event dict access with Ape event filters.
+severity: warning
+rule:
+  any:
+    - pattern: tx.events[$EVENT][0][$FIELD]
+    - pattern: len(tx.events[$EVENT])
+fix: tx.events.filter(contract.$EVENT)[0].$FIELD
+files:
+  - "**/*.py"
+url: "https://docs.apeworx.io/ape/stable/userguides/contracts.html"
+metadata:
+  zeroFalsePositivePolicy: "Only tx.events string-literal event names are transformed; unknown receiver names remain unchanged."

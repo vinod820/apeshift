@@ -1,0 +1,11 @@
+{
+  "brownie_simple_storage": [],
+  "brownie_fund_me": [
+    {
+      "file": "D:\\Boringai\\test-repos\\brownie_fund_me\\scripts\\deploy_mocks.py",
+      "line": 2,
+      "error": "invalid syntax (<unknown>, line 2)"
+    }
+  ],
+  "chainlink-mix": []
+}

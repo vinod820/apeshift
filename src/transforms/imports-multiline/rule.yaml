@@ -1,0 +1,16 @@
+id: apeshift-multiline-brownie-imports
+language: Python
+message: Replace multi-line Brownie imports with Ape imports for manual migration review.
+severity: warning
+rule:
+  pattern: |
+    from brownie import (
+        $$$NAMES
+    )
+fix: |
+  from ape import (
+      $$$NAMES
+  )
+files:
+  - "**/*.py"
+url: "https://ast-grep.github.io/guide/pattern-syntax.html"
