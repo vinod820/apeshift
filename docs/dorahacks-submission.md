@@ -12,7 +12,7 @@ ApeShift provides:
 - Zero false positives (verified across benchmark suite)
 - Real Ape 0.8.48 runtime validation on migrated repos
 - Confidence score report per migration
-- ApeWorX ecosystem docs PR (references issue #640): PENDING - open manually
+- ApeWorX ecosystem docs PR (references issue #640): https://github.com/ApeWorX/ape/pull/2773
 
 ### Benchmark Results
 | Repo | Files | Patterns Before | Patterns After | Auto% | FP | FN | Syntax OK | Runtime Safe | Ape Compile | Ape Test | Classification |
@@ -38,7 +38,7 @@ Using formula: Score = 100 × (1 − ((FP × wFP) + (FN × wFN)) ÷ (N × (wFP +
 ### Links
 - GitHub: https://github.com/vinod820/apeshift
 - Codemod Registry: https://app.codemod.com/registry/apeshift
-- ApeWorX docs PR: PENDING - open manually
+- ApeWorX docs PR: https://github.com/ApeWorX/ape/pull/2773
 - Brownie deprecation: https://github.com/eth-brownie/brownie#readme
 - ApeWorX issue #640: https://github.com/ApeWorX/ape/issues/640
 

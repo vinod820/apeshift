@@ -1,7 +1,7 @@
 **Framework Adoption Submission — ApeShift**
 
 Opened PR on ApeWorX/ape requesting official docs inclusion:  
-**PR:** PENDING - open manually  
+**PR:** https://github.com/ApeWorX/ape/pull/2773  
 **References:** https://github.com/ApeWorX/ape/issues/640
 
 The PR adds a complete "Migrating from Brownie" guide to the official

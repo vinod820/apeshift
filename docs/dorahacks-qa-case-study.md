@@ -3,7 +3,7 @@
 **Project:** ApeShift — production-grade Brownie → Ape migration codemod  
 **Registry:** https://app.codemod.com/registry/apeshift  
 **GitHub:** https://github.com/vinod820/apeshift  
-**ApeWorX Docs PR:** PENDING - open manually
+**ApeWorX Docs PR:** https://github.com/ApeWorX/ape/pull/2773
 
 **What it does:**
 Automates 93% of Brownie → Ape Framework migration using 14 deterministic
