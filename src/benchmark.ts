@@ -3,7 +3,7 @@ import path from "node:path";
 import { execa } from "execa";
 import { migrate } from "./runner.js";
 
-const APE_EXE = "C:\\Users\\vinod\\anaconda3\\envs\\ape311\\Scripts\\ape.exe";
+const APE_EXE = "ape";
 const REPOS = ["brownie_simple_storage", "brownie_fund_me", "chainlink-mix", "brownie-nft-course", "token-mix"] as const;
 const REPO_URLS: Record<(typeof REPOS)[number], string> = {
   brownie_simple_storage: "https://github.com/PatrickAlphaC/brownie_simple_storage",
@@ -97,19 +97,33 @@ async function listFiles(root: string, extension?: string): Promise<string[]> {
 }
 
 async function countPatterns(root: string): Promise<number> {
-  const files = (await listFiles(root)).filter((file) => /\.(py|ya?ml)$/i.test(file));
+  // Count only Python files — YAML config files are handled separately as file migrations
+  // and their brownie-config content would persist after migration, skewing the "after" count.
+  const files = (await listFiles(root)).filter((file) => file.endsWith(".py"));
   let count = 0;
   for (const file of files) {
     const source = await fs.readFile(file, "utf8").catch(() => "");
-    count += (source.match(/brownie\./g) ?? []).length;
-    count += (source.match(/from brownie import/g) ?? []).length;
-    count += (source.match(/import brownie/g) ?? []).length;
-    count += (source.match(/brownie-config/g) ?? []).length;
-    count += (source.match(/network\.show_active\(\)/g) ?? []).length;
+    // All "from brownie ..." import variants (single-line and multiline headers)
+    count += (source.match(/\bfrom brownie\b/g) ?? []).length;
+    // Standalone "import brownie" (distinct from "from brownie import")
+    count += (source.match(/\bimport brownie\b/g) ?? []).length;
+    // Network detection
+    count += (source.match(/\bnetwork\.show_active\(\)/g) ?? []).length;
+    // Sender dict patterns in function calls: {"from": ...}
     count += (source.match(/\{\s*["']from["']\s*:/g) ?? []).length;
-    count += (source.match(/web3\.eth\./g) ?? []).length;
-    count += (source.match(/accounts\.add\(/g) ?? []).length;
-    count += (source.match(/priority_fee/g) ?? []).length;
+    // Web3 legacy contract factory
+    count += (source.match(/\bweb3\.eth\./g) ?? []).length;
+    // Account index access — brownie form accounts[N]; does NOT match accounts.test_accounts[N]
+    // because (a) the first accounts is followed by ".", not "[", and (b) "test_accounts" has no
+    // word boundary between "_" and "a", so \baccounts won't fire inside test_accounts.
+    count += (source.match(/\baccounts\[\d+\]/g) ?? []).length;
+    // Contract deployment last-index: ContractName[-1] (Brownie container access)
+    count += (source.match(/\b[A-Z][A-Za-z0-9_]*\[-1\]/g) ?? []).length;
+    // Brownie exception class
+    count += (source.match(/\bVirtualMachineError\b/g) ?? []).length;
+    // Manual-review patterns that become TODO comments after migration
+    count += (source.match(/\baccounts\.add\(/g) ?? []).length;
+    count += (source.match(/\bpriority_fee\b/g) ?? []).length;
   }
   return count;
 }
@@ -153,15 +167,20 @@ async function auditForbidden(root: string): Promise<{ hits: string[]; todos: nu
 }
 
 async function runApe(root: string, command: "compile" | "test"): Promise<RuntimeCheck> {
-  if (!(await exists(APE_EXE))) {
-    return { status: "SKIPPED", output: `Ape executable not found: ${APE_EXE}`, exitCode: 127 };
+  try {
+    const result = await execa(APE_EXE, [command], { cwd: root, reject: false, all: true, timeout: 120_000 });
+    return {
+      status: result.exitCode === 0 ? "PASS" : "FAIL",
+      output: result.all ?? "",
+      exitCode: result.exitCode ?? 1,
+    };
+  } catch (error) {
+    const err = error as NodeJS.ErrnoException;
+    if (err.code === "ENOENT") {
+      return { status: "SKIPPED", output: `Ape executable not found on PATH: ${APE_EXE}`, exitCode: 127 };
+    }
+    return { status: "FAIL", output: err.message ?? String(error), exitCode: 1 };
   }
-  const result = await execa(APE_EXE, [command], { cwd: root, reject: false, all: true, timeout: 120_000 });
-  return {
-    status: result.exitCode === 0 ? "PASS" : "FAIL",
-    output: result.all ?? "",
-    exitCode: result.exitCode ?? 1,
-  };
 }
 
 function classifyRuntime(compile: RuntimeCheck, test: RuntimeCheck): string {
@@ -206,9 +225,23 @@ function table(results: RepoResult[]): string {
 async function writeRepoReport(outputRoot: string, result: RepoResult): Promise<void> {
   const report = `# ${result.repo} Migration Report
 
-## Fresh pattern counts
-- Before: ${result.patternsBefore}
-- After: ${result.patternsAfter}
+## Pattern counts (Python files only)
+- Before migration: ${result.patternsBefore}
+- After migration: ${result.patternsAfter}
+- Real automation: ${result.autoPercent}%  (= (${result.patternsBefore} - ${result.patternsAfter}) / ${result.patternsBefore} × 100)
+- False positives (incorrect changes): ${result.falsePositives}
+- False negatives (missed patterns → TODO): ${result.falseNegatives}
+
+### Patterns counted
+- \`from brownie\` import lines (all variants)
+- \`import brownie\` standalone
+- \`network.show_active()\` calls
+- \`{"from": …}\` sender dicts in function calls
+- \`web3.eth.\` legacy usage
+- \`accounts[N]\` index access (Brownie form; migrated → \`accounts.test_accounts[N]\`)
+- \`ContractName[-1]\` deployment index (Brownie container; migrated → \`project.X.deployments[-1]\`)
+- \`VirtualMachineError\` exception references
+- \`accounts.add(\` and \`priority_fee\` (manual-review → TODO comments)
 
 ## Syntax check result
 ${result.syntaxOk ? "PASS" : "FAIL"}

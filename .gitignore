@@ -1,11 +1,10 @@
 node_modules/
 dist/
+test-repos/
+test-repos-pristine/
 benchmark-cache/
-test-repos/*
-test-results/migrated/*
-test-results/benchmark-results.json
-!test-repos/.gitkeep
-!test-results/migrated/.gitkeep
+test-results/
+apeshift-report/
 *.log
 .env
 .venv/
@@ -13,4 +12,3 @@ __pycache__/
 *.pyc
 .tmp/
 .real-world/
-apeshift-report/

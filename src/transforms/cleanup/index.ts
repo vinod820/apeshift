@@ -92,7 +92,13 @@ function convertMultilineBrownieImports(source: string): TransformResult {
 }
 
 function ensureApeImport(source: string, names: string[]): string {
-  const needed = names.filter((name) => !new RegExp(`^from ape import .*\\b${name}\\b`, "m").test(source));
+  const needed = names.filter((name) => {
+    // Check single-line: from ape import ... <name> ...
+    if (new RegExp(`^from ape import .*\\b${name}\\b`, "m").test(source)) return false;
+    // Check multiline body: line that is just "    <name>," or "    <name>"
+    if (new RegExp(`^[ \\t]+${name}\\s*,?\\s*$`, "m").test(source)) return false;
+    return true;
+  });
   if (needed.length === 0) return source;
   const line = `from ape import ${unique(needed).join(", ")}`;
   if (source.startsWith("#!")) {
@@ -259,18 +265,40 @@ function normalizeApeImports(source: string): TransformResult {
   const names = new Set<string>();
   const output: string[] = [];
   let removed = 0;
-  let insertAt = lines[0]?.startsWith("#!") ? 1 : 0;
+  const insertAt = lines[0]?.startsWith("#!") ? 1 : 0;
+  let inMultilineImport = false;
 
   for (const line of lines) {
-    const match = line.match(/^from ape import (.+)$/);
-    if (!match) {
-      output.push(line);
+    // Inside a multiline "from ape import (\n    name,\n)" block
+    if (inMultilineImport) {
+      removed += 1;
+      if (line.trim() === ")") {
+        inMultilineImport = false;
+      } else {
+        const name = line.trim().replace(/,$/, "");
+        if (name && name !== "interface") names.add(name);
+      }
       continue;
     }
-    removed += 1;
-    for (const name of parseImportNames(match[1] ?? "")) {
-      if (name !== "interface") names.add(name);
+
+    // Opening of a multiline block: "from ape import ("
+    if (/^from ape import \(\s*$/.test(line)) {
+      inMultilineImport = true;
+      removed += 1;
+      continue;
     }
+
+    // Single-line: "from ape import name1, name2"
+    const match = line.match(/^from ape import (.+)$/);
+    if (match) {
+      removed += 1;
+      for (const name of parseImportNames(match[1] ?? "")) {
+        if (name !== "interface") names.add(name);
+      }
+      continue;
+    }
+
+    output.push(line);
   }
 
   if (names.size === 0) return { source, count: 0 };

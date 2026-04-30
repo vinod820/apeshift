@@ -14,6 +14,38 @@ url: "https://docs.apeworx.io/ape/stable/userguides/contracts.html"
 metadata:
   transformGroup: "transactions"
 ---
+id: apeshift-sender-dict-deploy-only-from
+language: Python
+message: Replace Brownie deploy sender dict (sole argument) with Ape sender keyword.
+severity: warning
+rule:
+  pattern: "$CONTRACT.deploy({'from': $ACCOUNT})"
+constraints:
+  ACCOUNT:
+    kind: identifier
+fix: $CONTRACT.deploy(sender=$ACCOUNT)
+files:
+  - "**/*.py"
+url: "https://docs.apeworx.io/ape/stable/userguides/contracts.html"
+metadata:
+  transformGroup: "transactions"
+---
+id: apeshift-sender-dict-deploy-only-from-value
+language: Python
+message: Replace Brownie deploy sender/value dict (sole arguments) with Ape keywords.
+severity: warning
+rule:
+  pattern: "$CONTRACT.deploy({'from': $ACCOUNT, 'value': $VALUE})"
+constraints:
+  ACCOUNT:
+    kind: identifier
+fix: $CONTRACT.deploy(value=$VALUE, sender=$ACCOUNT)
+files:
+  - "**/*.py"
+url: "https://docs.apeworx.io/ape/stable/userguides/contracts.html"
+metadata:
+  transformGroup: "transactions"
+---
 id: apeshift-sender-dict-call-from
 language: Python
 message: Replace Brownie call sender dict with Ape sender keyword.
@@ -24,6 +56,22 @@ constraints:
   ACCOUNT:
     kind: identifier
 fix: $CONTRACT.$FN($$$ARGS, sender=$ACCOUNT)
+files:
+  - "**/*.py"
+url: "https://docs.apeworx.io/ape/stable/userguides/contracts.html"
+metadata:
+  transformGroup: "transactions"
+---
+id: apeshift-sender-dict-call-only-from
+language: Python
+message: Replace Brownie call sender dict (sole argument) with Ape sender keyword.
+severity: warning
+rule:
+  pattern: "$CONTRACT.$FN({'from': $ACCOUNT})"
+constraints:
+  ACCOUNT:
+    kind: identifier
+fix: $CONTRACT.$FN(sender=$ACCOUNT)
 files:
   - "**/*.py"
 url: "https://docs.apeworx.io/ape/stable/userguides/contracts.html"
@@ -46,6 +94,22 @@ url: "https://docs.apeworx.io/ape/stable/userguides/contracts.html"
 metadata:
   transformGroup: "transactions"
 ---
+id: apeshift-sender-dict-call-only-from-value
+language: Python
+message: Replace Brownie sender/value dict (sole arguments) with Ape keywords.
+severity: warning
+rule:
+  pattern: "$CONTRACT.$FN({'from': $ACCOUNT, 'value': $VALUE})"
+constraints:
+  ACCOUNT:
+    kind: identifier
+fix: $CONTRACT.$FN(value=$VALUE, sender=$ACCOUNT)
+files:
+  - "**/*.py"
+url: "https://docs.apeworx.io/ape/stable/userguides/contracts.html"
+metadata:
+  transformGroup: "transactions"
+---
 id: apeshift-sender-dict-call-from-gas-limit
 language: Python
 message: Replace Brownie sender/gas_limit dict with Ape keywords.
@@ -56,6 +120,22 @@ constraints:
   ACCOUNT:
     kind: identifier
 fix: $CONTRACT.$FN($$$ARGS, gas_limit=$GAS, sender=$ACCOUNT)
+files:
+  - "**/*.py"
+url: "https://docs.apeworx.io/ape/stable/userguides/contracts.html"
+metadata:
+  transformGroup: "transactions"
+---
+id: apeshift-sender-dict-call-only-from-gas-limit
+language: Python
+message: Replace Brownie sender/gas_limit dict (sole arguments) with Ape keywords.
+severity: warning
+rule:
+  pattern: "$CONTRACT.$FN({'from': $ACCOUNT, 'gas_limit': $GAS})"
+constraints:
+  ACCOUNT:
+    kind: identifier
+fix: $CONTRACT.$FN(gas_limit=$GAS, sender=$ACCOUNT)
 files:
   - "**/*.py"
 url: "https://docs.apeworx.io/ape/stable/userguides/contracts.html"
