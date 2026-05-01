@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { accountsTransform } from "../../src/transforms/accounts/index.js";
+import { cleanupTransform } from "../../src/transforms/cleanup/index.js";
 
 describe("accounts sender dict transform", () => {
   it("rewrites deploy with from only", () => {
@@ -31,5 +32,12 @@ describe("accounts sender dict transform", () => {
     const result = accountsTransform.apply("contract.fn({'from': accounts[0]})");
     expect(result.source).toBe("contract.fn(sender=accounts[0])");
     expect(result.source).not.toContain("TODO(apeshift)");
+  });
+
+  it("does NOT rewrite accounts[0] when accounts is a pytest fixture param", () => {
+    const src = `def test_foo(accounts):
+    return accounts[0]`;
+    const result = cleanupTransform.apply(src);
+    expect(result.source).not.toContain("test_accounts");
   });
 });

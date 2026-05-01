@@ -6,6 +6,7 @@ const brownieNames = new Set([
   "config",
   "Contract",
   "convert",
+  "history",
   "exceptions",
   "interface",
   "network",
@@ -139,12 +140,63 @@ function convertSenderDicts(source: string): TransformResult {
 }
 
 function convertAccounts(source: string): TransformResult {
+  const usedAsFixture = /def\s+\w+\s*\([^)]*\baccounts\b[^)]*\)\s*:/m.test(source);
+  if (usedAsFixture) {
+    return { source, count: 0 };
+  }
   let count = 0;
   let next = source.replace(/\baccounts\[(\d+)\]/g, (_match, index: string) => {
     count += 1;
     return `accounts.test_accounts[${index}]`;
   });
   if (count > 0) next = ensureApeImport(next, ["accounts"]);
+  return { source: next, count };
+}
+
+function convertAccountsAt(source: string): TransformResult {
+  let count = 0;
+  const next = source.replace(/\baccounts\.at\(([^)]+)\)/g, (_match, args: string) => {
+    count += 1;
+    return `accounts.at(${args})  # TODO(apeshift): use accounts[accounts.test_accounts.index(...)] or ape_test fixture`;
+  });
+  return { source: next, count };
+}
+
+function convertChainSleep(source: string): TransformResult {
+  let count = 0;
+  const next = source.replace(/\bchain\.sleep\(([^)]*)\)/g, (_match, arg: string) => {
+    count += 1;
+    return `chain.mine(1)  # TODO(apeshift): chain.sleep(${arg}) → chain.mine(); adjust block count as needed`;
+  });
+  return { source: next, count };
+}
+
+function convertHistory(source: string): TransformResult {
+  let count = 0;
+  const next = source.replace(/(?<!\.)(\bhistory\b)(?=\s*\[)/g, () => {
+    count += 1;
+    return "chain.history";
+  });
+  return { source: count > 0 ? ensureApeImport(next, ["chain"]) : next, count };
+}
+
+function convertWei(source: string): TransformResult {
+  let count = 0;
+  const unitMap: Record<string, string> = {
+    ether: "10**18",
+    gwei: "10**9",
+    wei: "1",
+  };
+  const next = source
+    .replace(/\bWei\(\s*["'](\d+(?:\.\d+)?)\s+(ether|gwei|wei)["']\s*\)/gi, (_match, amount: string, unit: string) => {
+      count += 1;
+      const multiplier = unitMap[unit.toLowerCase()] ?? "10**18";
+      return `${amount} * ${multiplier}`;
+    })
+    .replace(/\bWei\(([^)]+)\)/g, (_match, expr: string) => {
+      count += 1;
+      return `Wei(${expr})  # TODO(apeshift): replace Wei() with ape.convert() or explicit int`;
+    });
   return { source: next, count };
 }
 
@@ -238,6 +290,18 @@ function convertRemainingEdges(source: string): TransformResult {
     count += 1;
     return "ContractLogicError";
   });
+  next = next.replace(/\bbrownie\.convert\.to_uint\b/g, () => {
+    count += 1;
+    return "int  # TODO(apeshift): brownie.convert.to_uint → use int() or ape.convert()";
+  });
+  next = next.replace(/\bbrownie\.convert\b/g, () => {
+    count += 1;
+    return "convert  # TODO(apeshift): verify brownie.convert migration to ape.convert()";
+  });
+  next = next.replace(/\bbrownie\.multicall\b/g, () => {
+    count += 1;
+    return "# TODO(apeshift): brownie.multicall has no direct Ape equivalent; use ape-safe or manual batching";
+  });
 
   if (source !== next) {
     if (next.includes("ContractLogicError")) next = ensureExceptionImport(next);
@@ -308,9 +372,13 @@ function normalizeApeImports(source: string): TransformResult {
 }
 
 const cleanupSteps = [
+  convertWei,
   convertSenderDicts,
   convertPlainBrownieImports,
   convertAccounts,
+  convertAccountsAt,
+  convertChainSleep,
+  convertHistory,
   convertNetworks,
   convertInterfaceCalls,
   convertWeb3ContractFactory,
