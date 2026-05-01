@@ -338,8 +338,9 @@ function convertWei(source: string): TransformResult {
 }
 
 function convertNetworks(source: string): TransformResult {
+  const masked = maskLiterals(source);
   let count = 0;
-  let next = source.replace(/^import brownie\.network as network$/gm, () => {
+  let next = masked.masked.replace(/^import brownie\.network as network$/gm, () => {
     count += 1;
     return "from ape import networks";
   });
@@ -347,8 +348,88 @@ function convertNetworks(source: string): TransformResult {
     count += 1;
     return "networks.provider.network.name";
   });
+  next = next.replace(/\bnetwork\.connect\(\s*([^)]+)\s*\)/g, (_m, choice: string) => {
+    count += 1;
+    return `# TODO(apeshift): use with networks.parse_network_choice(${choice.trim()}): context manager`;
+  });
+  next = next.replace(/\bnetwork\.disconnect\(\s*\)/g, () => {
+    count += 1;
+    return "# TODO(apeshift): Ape uses context managers; remove disconnect";
+  });
+  next = next.replace(/\bnetwork\.is_connected\(\s*\)/g, () => {
+    count += 1;
+    return "networks.provider is not None";
+  });
+  next = next.replace(/\bnetwork\.gas_price\(\s*\)/g, () => {
+    count += 1;
+    return "networks.provider.gas_price";
+  });
+  next = next.replace(/\bnetwork\.gas_limit\(\s*\)/g, () => {
+    count += 1;
+    return "networks.provider.settings.gas_limit";
+  });
+  next = masked.restore(next);
   if (count > 0) next = ensureApeImport(next, ["networks"]);
   return { source: next, count };
+}
+
+function convertAdditionalPatterns(source: string): TransformResult {
+  const masked = maskLiterals(source);
+  let count = 0;
+  let next = masked.masked;
+  next = next.replace(/\b([A-Za-z_][A-Za-z0-9_]*)\.wait\(([^)]*)\)/g, (_m, tx: string, arg: string) => {
+    count += 1;
+    return `${tx}.wait_confirmations(${arg.trim()})`;
+  });
+  next = next.replace(/\b([A-Za-z_][A-Za-z0-9_]*)\.revert_msg\b/g, (_m, tx: string) => {
+    count += 1;
+    return `${tx}.revert_message`;
+  });
+  next = next.replace(/\b([A-Za-z_][A-Za-z0-9_]*)\.events\[\s*["']([A-Za-z_][A-Za-z0-9_]*)["']\s*\]/g, (_m, tx: string, ev: string) => {
+    count += 1;
+    return `${tx}.events.filter(contract.${ev})  # TODO(apeshift): verify event class source`;
+  });
+  next = next.replace(/\b([A-Za-z_][A-Za-z0-9_]*)\.status\s*==\s*1\b/g, (_m, tx: string) => {
+    count += 1;
+    return `${tx}.status == TransactionStatusEnum.passing  # TODO(apeshift): verify enum import`;
+  });
+  next = next.replace(/\baccounts\.add\(([^)]+)\)/g, () => {
+    count += 1;
+    return 'accounts.load("alias")  # TODO(apeshift): migrate key handling';
+  });
+  next = next.replace(/\baccounts\.default\b/g, () => {
+    count += 1;
+    return "accounts.default  # TODO(apeshift): verify default account config";
+  });
+  next = next.replace(/\bContract\.from_explorer\(([^)]+)\)/g, (_m, addr: string) => {
+    count += 1;
+    return `Contract.at(${addr.trim()})  # TODO(apeshift): ensure explorer plugin`;
+  });
+  next = next.replace(/\b([A-Za-z_][A-Za-z0-9_]*)\.transfer\.call\(([^)]*)\)/g, (_m, token: string, args: string) => {
+    count += 1;
+    return `${token}.transfer(${args})  # TODO(apeshift): confirm call semantics`;
+  });
+  next = next.replace(/\b([A-Za-z_][A-Za-z0-9_]*)\.functions\.transfer\(([^)]*)\)/g, (_m, token: string, args: string) => {
+    count += 1;
+    return `${token}.transfer(${args})  # TODO(apeshift): web3 style removed`;
+  });
+  next = next.replace(/\bbrownie\.test\.strategy\(([^)]*)\)/g, (_m, args: string) => {
+    count += 1;
+    return `# TODO(apeshift): use hypothesis directly; brownie.test.strategy(${args}) has no Ape equivalent`;
+  });
+  next = next.replace(/\bconfig\[\s*["']wallets["']\s*\]\[\s*["']from_key["']\s*\]/g, () => {
+    count += 1;
+    return "accounts.load(...)  # TODO(apeshift): migrate from_key to ape accounts import";
+  });
+  next = next.replace(/\bconfig\[\s*["']networks["']\s*\]\[\s*([^\]]+)\s*\]/g, () => {
+    count += 1;
+    return "networks.provider.network  # TODO(apeshift): move to ape-config/networks.provider";
+  });
+  next = next.replace(/def\s+([A-Za-z_][A-Za-z0-9_]*)\(([^)]*\bweb3\b[^)]*)\)\s*:/g, (_m, fn: string, args: string) => {
+    count += 1;
+    return `def ${fn}(${args}):  # TODO(apeshift): replace web3 fixture with provider`;
+  });
+  return { source: masked.restore(next), count };
 }
 
 function convertPlainBrownieImports(source: string): TransformResult {
@@ -517,6 +598,7 @@ const cleanupSteps = [
   convertChainSleep,
   convertHistory,
   convertNetworks,
+  convertAdditionalPatterns,
   convertInterfaceCalls,
   convertWeb3ContractFactory,
   convertContractNames,

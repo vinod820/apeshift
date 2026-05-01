@@ -415,3 +415,33 @@ describe("EDGE CASES", () => {
     expect(result).toContain("Chain = get_chain()");
   });
 });
+
+describe("NEW PATTERNS — no false positives and idempotency", () => {
+  const samples = [
+    "network.connect(\"mainnet\")",
+    "network.disconnect()",
+    "network.is_connected()",
+    "tx.wait(1)",
+    "tx.revert_msg",
+    "tx.events[\"Transfer\"]",
+    "Contract.from_explorer(addr)",
+  ];
+
+  for (const sample of samples) {
+    it(`does not rewrite in comment: ${sample}`, () => {
+      expect(applyAll(`# ${sample}`)).toBe(`# ${sample}`);
+    });
+    it(`does not rewrite in string: ${sample}`, () => {
+      expect(applyAll(`x = "${sample}"`)).toBe(`x = "${sample}"`);
+    });
+    it(`does not rewrite in docstring: ${sample}`, () => {
+      expect(applyAll(`"""${sample}"""`)).toBe(`"""${sample}"""`);
+    });
+  }
+
+  it("is idempotent for a mixed new-pattern sample", () => {
+    const src = `network.connect("mainnet")\ntx.wait(1)\naccounts.add("0xabc")`;
+    const once = applyAll(src);
+    expect(applyAll(once)).toBe(once);
+  });
+});
