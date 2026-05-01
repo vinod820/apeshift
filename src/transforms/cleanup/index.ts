@@ -119,6 +119,137 @@ function ensureExceptionImport(source: string): string {
   return `${line}\n${source}`;
 }
 
+type MaskedSource = {
+  masked: string;
+  restore: (value: string) => string;
+};
+
+function maskLiterals(source: string): MaskedSource {
+  const parts: string[] = [];
+  const values: string[] = [];
+  const pushMask = (value: string) => {
+    const token = `__APESHIFT_MASK_${values.length}__`;
+    values.push(value);
+    parts.push(token);
+  };
+
+  let i = 0;
+  while (i < source.length) {
+    const ch = source[i];
+    const next3 = source.slice(i, i + 3);
+
+    if (next3 === '"""' || next3 === "'''") {
+      const quote = next3;
+      let j = i + 3;
+      while (j < source.length && source.slice(j, j + 3) !== quote) j += 1;
+      if (j < source.length) j += 3;
+      pushMask(source.slice(i, j));
+      i = j;
+      continue;
+    }
+
+    if (ch === '"' || ch === "'") {
+      const quote = ch;
+      let j = i + 1;
+      while (j < source.length) {
+        if (source[j] === "\\" && j + 1 < source.length) {
+          j += 2;
+          continue;
+        }
+        if (source[j] === quote) {
+          j += 1;
+          break;
+        }
+        j += 1;
+      }
+      pushMask(source.slice(i, j));
+      i = j;
+      continue;
+    }
+
+    if (ch === "#") {
+      let j = i;
+      while (j < source.length && source[j] !== "\n") j += 1;
+      pushMask(source.slice(i, j));
+      i = j;
+      continue;
+    }
+
+    parts.push(ch);
+    i += 1;
+  }
+
+  return {
+    masked: parts.join(""),
+    restore(value: string) {
+      return value.replace(/__APESHIFT_MASK_(\d+)__/g, (_match, index: string) => values[Number(index)] ?? "");
+    },
+  };
+}
+
+function maskComments(source: string): MaskedSource {
+  const parts: string[] = [];
+  const values: string[] = [];
+  const pushMask = (value: string) => {
+    const token = `__APESHIFT_COMMENT_${values.length}__`;
+    values.push(value);
+    parts.push(token);
+  };
+
+  let i = 0;
+  while (i < source.length) {
+    const ch = source[i];
+    const next3 = source.slice(i, i + 3);
+
+    if (next3 === '"""' || next3 === "'''") {
+      const quote = next3;
+      let j = i + 3;
+      while (j < source.length && source.slice(j, j + 3) !== quote) j += 1;
+      if (j < source.length) j += 3;
+      parts.push(source.slice(i, j));
+      i = j;
+      continue;
+    }
+
+    if (ch === '"' || ch === "'") {
+      const quote = ch;
+      let j = i + 1;
+      while (j < source.length) {
+        if (source[j] === "\\" && j + 1 < source.length) {
+          j += 2;
+          continue;
+        }
+        if (source[j] === quote) {
+          j += 1;
+          break;
+        }
+        j += 1;
+      }
+      parts.push(source.slice(i, j));
+      i = j;
+      continue;
+    }
+
+    if (ch === "#") {
+      let j = i;
+      while (j < source.length && source[j] !== "\n") j += 1;
+      pushMask(source.slice(i, j));
+      i = j;
+      continue;
+    }
+
+    parts.push(ch);
+    i += 1;
+  }
+
+  return {
+    masked: parts.join(""),
+    restore(value: string) {
+      return value.replace(/__APESHIFT_COMMENT_(\d+)__/g, (_match, index: string) => values[Number(index)] ?? "");
+    },
+  };
+}
+
 function convertSenderDicts(source: string): TransformResult {
   let count = 0;
   const patterns: Array<[RegExp, string]> = [
@@ -144,11 +275,13 @@ function convertAccounts(source: string): TransformResult {
   if (usedAsFixture) {
     return { source, count: 0 };
   }
+  const masked = maskLiterals(source);
   let count = 0;
-  let next = source.replace(/\baccounts\[(\d+)\]/g, (_match, index: string) => {
+  let next = masked.masked.replace(/\baccounts\[(\d+)\]/g, (_match, index: string) => {
     count += 1;
     return `accounts.test_accounts[${index}]`;
   });
+  next = masked.restore(next);
   if (count > 0) next = ensureApeImport(next, ["accounts"]);
   return { source: next, count };
 }
@@ -163,31 +296,35 @@ function convertAccountsAt(source: string): TransformResult {
 }
 
 function convertChainSleep(source: string): TransformResult {
+  const masked = maskLiterals(source);
   let count = 0;
-  const next = source.replace(/\bchain\.sleep\(([^)]*)\)/g, (_match, arg: string) => {
+  const next = masked.masked.replace(/\bchain\.sleep\(([^)]*)\)/g, (_match, arg: string) => {
     count += 1;
     return `chain.mine(1)  # TODO(apeshift): chain.sleep(${arg}) → chain.mine(); adjust block count as needed`;
   });
-  return { source: next, count };
+  return { source: masked.restore(next), count };
 }
 
 function convertHistory(source: string): TransformResult {
+  const masked = maskLiterals(source);
   let count = 0;
-  const next = source.replace(/(?<!\.)(\bhistory\b)(?=\s*\[)/g, () => {
+  const next = masked.masked.replace(/(?<!\.)(\bhistory\b)(?=\s*\[)/g, () => {
     count += 1;
     return "chain.history";
   });
-  return { source: count > 0 ? ensureApeImport(next, ["chain"]) : next, count };
+  const restored = masked.restore(next);
+  return { source: count > 0 ? ensureApeImport(restored, ["chain"]) : restored, count };
 }
 
 function convertWei(source: string): TransformResult {
+  const masked = maskComments(source);
   let count = 0;
   const unitMap: Record<string, string> = {
     ether: "10**18",
     gwei: "10**9",
     wei: "1",
   };
-  const next = source
+  const next = masked.masked
     .replace(/\bWei\(\s*["'](\d+(?:\.\d+)?)\s+(ether|gwei|wei)["']\s*\)/gi, (_match, amount: string, unit: string) => {
       count += 1;
       const multiplier = unitMap[unit.toLowerCase()] ?? "10**18";
@@ -197,7 +334,7 @@ function convertWei(source: string): TransformResult {
       count += 1;
       return `Wei(${expr})  # TODO(apeshift): replace Wei() with ape.convert() or explicit int`;
     });
-  return { source: next, count };
+  return { source: masked.restore(next), count };
 }
 
 function convertNetworks(source: string): TransformResult {
