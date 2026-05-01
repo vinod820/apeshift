@@ -6,6 +6,7 @@ const brownieNames = new Set([
   "config",
   "Contract",
   "convert",
+  "history",
   "exceptions",
   "interface",
   "network",
@@ -118,6 +119,137 @@ function ensureExceptionImport(source: string): string {
   return `${line}\n${source}`;
 }
 
+type MaskedSource = {
+  masked: string;
+  restore: (value: string) => string;
+};
+
+function maskLiterals(source: string): MaskedSource {
+  const parts: string[] = [];
+  const values: string[] = [];
+  const pushMask = (value: string) => {
+    const token = `__APESHIFT_MASK_${values.length}__`;
+    values.push(value);
+    parts.push(token);
+  };
+
+  let i = 0;
+  while (i < source.length) {
+    const ch = source[i];
+    const next3 = source.slice(i, i + 3);
+
+    if (next3 === '"""' || next3 === "'''") {
+      const quote = next3;
+      let j = i + 3;
+      while (j < source.length && source.slice(j, j + 3) !== quote) j += 1;
+      if (j < source.length) j += 3;
+      pushMask(source.slice(i, j));
+      i = j;
+      continue;
+    }
+
+    if (ch === '"' || ch === "'") {
+      const quote = ch;
+      let j = i + 1;
+      while (j < source.length) {
+        if (source[j] === "\\" && j + 1 < source.length) {
+          j += 2;
+          continue;
+        }
+        if (source[j] === quote) {
+          j += 1;
+          break;
+        }
+        j += 1;
+      }
+      pushMask(source.slice(i, j));
+      i = j;
+      continue;
+    }
+
+    if (ch === "#") {
+      let j = i;
+      while (j < source.length && source[j] !== "\n") j += 1;
+      pushMask(source.slice(i, j));
+      i = j;
+      continue;
+    }
+
+    parts.push(ch);
+    i += 1;
+  }
+
+  return {
+    masked: parts.join(""),
+    restore(value: string) {
+      return value.replace(/__APESHIFT_MASK_(\d+)__/g, (_match, index: string) => values[Number(index)] ?? "");
+    },
+  };
+}
+
+function maskComments(source: string): MaskedSource {
+  const parts: string[] = [];
+  const values: string[] = [];
+  const pushMask = (value: string) => {
+    const token = `__APESHIFT_COMMENT_${values.length}__`;
+    values.push(value);
+    parts.push(token);
+  };
+
+  let i = 0;
+  while (i < source.length) {
+    const ch = source[i];
+    const next3 = source.slice(i, i + 3);
+
+    if (next3 === '"""' || next3 === "'''") {
+      const quote = next3;
+      let j = i + 3;
+      while (j < source.length && source.slice(j, j + 3) !== quote) j += 1;
+      if (j < source.length) j += 3;
+      parts.push(source.slice(i, j));
+      i = j;
+      continue;
+    }
+
+    if (ch === '"' || ch === "'") {
+      const quote = ch;
+      let j = i + 1;
+      while (j < source.length) {
+        if (source[j] === "\\" && j + 1 < source.length) {
+          j += 2;
+          continue;
+        }
+        if (source[j] === quote) {
+          j += 1;
+          break;
+        }
+        j += 1;
+      }
+      parts.push(source.slice(i, j));
+      i = j;
+      continue;
+    }
+
+    if (ch === "#") {
+      let j = i;
+      while (j < source.length && source[j] !== "\n") j += 1;
+      pushMask(source.slice(i, j));
+      i = j;
+      continue;
+    }
+
+    parts.push(ch);
+    i += 1;
+  }
+
+  return {
+    masked: parts.join(""),
+    restore(value: string) {
+      return value.replace(/__APESHIFT_COMMENT_(\d+)__/g, (_match, index: string) => values[Number(index)] ?? "");
+    },
+  };
+}
+
 function convertSenderDicts(source: string): TransformResult {
   let count = 0;
   const patterns: Array<[RegExp, string]> = [
@@ -139,18 +271,76 @@ function convertSenderDicts(source: string): TransformResult {
 }
 
 function convertAccounts(source: string): TransformResult {
+  const usedAsFixture = /def\s+\w+\s*\([^)]*\baccounts\b[^)]*\)\s*:/m.test(source);
+  if (usedAsFixture) {
+    return { source, count: 0 };
+  }
+  const masked = maskLiterals(source);
   let count = 0;
-  let next = source.replace(/\baccounts\[(\d+)\]/g, (_match, index: string) => {
+  let next = masked.masked.replace(/\baccounts\[(\d+)\]/g, (_match, index: string) => {
     count += 1;
     return `accounts.test_accounts[${index}]`;
   });
+  next = masked.restore(next);
   if (count > 0) next = ensureApeImport(next, ["accounts"]);
   return { source: next, count };
 }
 
-function convertNetworks(source: string): TransformResult {
+function convertAccountsAt(source: string): TransformResult {
   let count = 0;
-  let next = source.replace(/^import brownie\.network as network$/gm, () => {
+  const next = source.replace(/\baccounts\.at\(([^)]+)\)/g, (_match, args: string) => {
+    count += 1;
+    return `accounts.at(${args})  # TODO(apeshift): use accounts[accounts.test_accounts.index(...)] or ape_test fixture`;
+  });
+  return { source: next, count };
+}
+
+function convertChainSleep(source: string): TransformResult {
+  const masked = maskLiterals(source);
+  let count = 0;
+  const next = masked.masked.replace(/\bchain\.sleep\(([^)]*)\)/g, (_match, arg: string) => {
+    count += 1;
+    return `chain.mine(1)  # TODO(apeshift): chain.sleep(${arg}) → chain.mine(); adjust block count as needed`;
+  });
+  return { source: masked.restore(next), count };
+}
+
+function convertHistory(source: string): TransformResult {
+  const masked = maskLiterals(source);
+  let count = 0;
+  const next = masked.masked.replace(/(?<!\.)(\bhistory\b)(?=\s*\[)/g, () => {
+    count += 1;
+    return "chain.history";
+  });
+  const restored = masked.restore(next);
+  return { source: count > 0 ? ensureApeImport(restored, ["chain"]) : restored, count };
+}
+
+function convertWei(source: string): TransformResult {
+  const masked = maskComments(source);
+  let count = 0;
+  const unitMap: Record<string, string> = {
+    ether: "10**18",
+    gwei: "10**9",
+    wei: "1",
+  };
+  const next = masked.masked
+    .replace(/\bWei\(\s*["'](\d+(?:\.\d+)?)\s+(ether|gwei|wei)["']\s*\)/gi, (_match, amount: string, unit: string) => {
+      count += 1;
+      const multiplier = unitMap[unit.toLowerCase()] ?? "10**18";
+      return `${amount} * ${multiplier}`;
+    })
+    .replace(/\bWei\(([^)]+)\)/g, (_match, expr: string) => {
+      count += 1;
+      return `Wei(${expr})  # TODO(apeshift): replace Wei() with ape.convert() or explicit int`;
+    });
+  return { source: masked.restore(next), count };
+}
+
+function convertNetworks(source: string): TransformResult {
+  const masked = maskLiterals(source);
+  let count = 0;
+  let next = masked.masked.replace(/^import brownie\.network as network$/gm, () => {
     count += 1;
     return "from ape import networks";
   });
@@ -158,8 +348,88 @@ function convertNetworks(source: string): TransformResult {
     count += 1;
     return "networks.provider.network.name";
   });
+  next = next.replace(/\bnetwork\.connect\(\s*([^)]+)\s*\)/g, (_m, choice: string) => {
+    count += 1;
+    return `# TODO(apeshift): use with networks.parse_network_choice(${choice.trim()}): context manager`;
+  });
+  next = next.replace(/\bnetwork\.disconnect\(\s*\)/g, () => {
+    count += 1;
+    return "# TODO(apeshift): Ape uses context managers; remove disconnect";
+  });
+  next = next.replace(/\bnetwork\.is_connected\(\s*\)/g, () => {
+    count += 1;
+    return "networks.provider is not None";
+  });
+  next = next.replace(/\bnetwork\.gas_price\(\s*\)/g, () => {
+    count += 1;
+    return "networks.provider.gas_price";
+  });
+  next = next.replace(/\bnetwork\.gas_limit\(\s*\)/g, () => {
+    count += 1;
+    return "networks.provider.settings.gas_limit";
+  });
+  next = masked.restore(next);
   if (count > 0) next = ensureApeImport(next, ["networks"]);
   return { source: next, count };
+}
+
+function convertAdditionalPatterns(source: string): TransformResult {
+  const masked = maskLiterals(source);
+  let count = 0;
+  let next = masked.masked;
+  next = next.replace(/\b([A-Za-z_][A-Za-z0-9_]*)\.wait\(([^)]*)\)/g, (_m, tx: string, arg: string) => {
+    count += 1;
+    return `${tx}.wait_confirmations(${arg.trim()})`;
+  });
+  next = next.replace(/\b([A-Za-z_][A-Za-z0-9_]*)\.revert_msg\b/g, (_m, tx: string) => {
+    count += 1;
+    return `${tx}.revert_message`;
+  });
+  next = next.replace(/\b([A-Za-z_][A-Za-z0-9_]*)\.events\[\s*["']([A-Za-z_][A-Za-z0-9_]*)["']\s*\]/g, (_m, tx: string, ev: string) => {
+    count += 1;
+    return `${tx}.events.filter(contract.${ev})  # TODO(apeshift): verify event class source`;
+  });
+  next = next.replace(/\b([A-Za-z_][A-Za-z0-9_]*)\.status\s*==\s*1\b/g, (_m, tx: string) => {
+    count += 1;
+    return `${tx}.status == TransactionStatusEnum.passing  # TODO(apeshift): verify enum import`;
+  });
+  next = next.replace(/\baccounts\.add\(([^)]+)\)/g, () => {
+    count += 1;
+    return 'accounts.load("alias")  # TODO(apeshift): migrate key handling';
+  });
+  next = next.replace(/\baccounts\.default\b/g, () => {
+    count += 1;
+    return "accounts.default  # TODO(apeshift): verify default account config";
+  });
+  next = next.replace(/\bContract\.from_explorer\(([^)]+)\)/g, (_m, addr: string) => {
+    count += 1;
+    return `Contract.at(${addr.trim()})  # TODO(apeshift): ensure explorer plugin`;
+  });
+  next = next.replace(/\b([A-Za-z_][A-Za-z0-9_]*)\.transfer\.call\(([^)]*)\)/g, (_m, token: string, args: string) => {
+    count += 1;
+    return `${token}.transfer(${args})  # TODO(apeshift): confirm call semantics`;
+  });
+  next = next.replace(/\b([A-Za-z_][A-Za-z0-9_]*)\.functions\.transfer\(([^)]*)\)/g, (_m, token: string, args: string) => {
+    count += 1;
+    return `${token}.transfer(${args})  # TODO(apeshift): web3 style removed`;
+  });
+  next = next.replace(/\bbrownie\.test\.strategy\(([^)]*)\)/g, (_m, args: string) => {
+    count += 1;
+    return `# TODO(apeshift): use hypothesis directly; brownie.test.strategy(${args}) has no Ape equivalent`;
+  });
+  next = next.replace(/\bconfig\[\s*["']wallets["']\s*\]\[\s*["']from_key["']\s*\]/g, () => {
+    count += 1;
+    return "accounts.load(...)  # TODO(apeshift): migrate from_key to ape accounts import";
+  });
+  next = next.replace(/\bconfig\[\s*["']networks["']\s*\]\[\s*([^\]]+)\s*\]/g, () => {
+    count += 1;
+    return "networks.provider.network  # TODO(apeshift): move to ape-config/networks.provider";
+  });
+  next = next.replace(/def\s+([A-Za-z_][A-Za-z0-9_]*)\(([^)]*\bweb3\b[^)]*)\)\s*:/g, (_m, fn: string, args: string) => {
+    count += 1;
+    return `def ${fn}(${args}):  # TODO(apeshift): replace web3 fixture with provider`;
+  });
+  return { source: masked.restore(next), count };
 }
 
 function convertPlainBrownieImports(source: string): TransformResult {
@@ -238,6 +508,18 @@ function convertRemainingEdges(source: string): TransformResult {
     count += 1;
     return "ContractLogicError";
   });
+  next = next.replace(/\bbrownie\.convert\.to_uint\b/g, () => {
+    count += 1;
+    return "int  # TODO(apeshift): brownie.convert.to_uint → use int() or ape.convert()";
+  });
+  next = next.replace(/\bbrownie\.convert\b/g, () => {
+    count += 1;
+    return "convert  # TODO(apeshift): verify brownie.convert migration to ape.convert()";
+  });
+  next = next.replace(/\bbrownie\.multicall\b/g, () => {
+    count += 1;
+    return "# TODO(apeshift): brownie.multicall has no direct Ape equivalent; use ape-safe or manual batching";
+  });
 
   if (source !== next) {
     if (next.includes("ContractLogicError")) next = ensureExceptionImport(next);
@@ -308,10 +590,15 @@ function normalizeApeImports(source: string): TransformResult {
 }
 
 const cleanupSteps = [
+  convertWei,
   convertSenderDicts,
   convertPlainBrownieImports,
   convertAccounts,
+  convertAccountsAt,
+  convertChainSleep,
+  convertHistory,
   convertNetworks,
+  convertAdditionalPatterns,
   convertInterfaceCalls,
   convertWeb3ContractFactory,
   convertContractNames,
