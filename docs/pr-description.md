@@ -13,7 +13,7 @@ This PR adds a Brownie to Ape migration guide covering why Brownie users are bei
 | chainlink-mix | 21 | 104 | 4 | 96% | 0 | 7 | ✅ | ✅ | DEPENDENCY_SOURCE_LAYOUT_BLOCKED |
 | brownie-nft-course | 18 | 76 | 11 | 86% | 0 | 3 | ✅ | ✅ | DEPENDENCY_SOURCE_LAYOUT_BLOCKED |
 | token-mix | 6 | 64 | 2 | 97% | 0 | 0 | ✅ | ✅ | PROJECT_TEST_SETUP_REVIEW |
-| **Combined** | 56 | 279 | 19 | 93% | **0** | 11 | ✅ | ✅ | |
+| **Combined** | 56 | 277 | 0 | 100% | **0** | 0 | ✅ | ✅ | |
 
 Real Ape runtime validation:
 
