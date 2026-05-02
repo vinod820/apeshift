@@ -1,6 +1,6 @@
 {
   "name": "apeshift",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Production-grade Brownie to Ape migration: validation, reporting, and official ApeWorX adoption.",
   "type": "module",
   "bin": {
@@ -18,7 +18,8 @@
     "test": "vitest run --pool=threads --poolOptions.threads.singleThread=true",
     "typecheck": "tsc --noEmit",
     "codemod:validate": "codemod workflow validate -w workflow.yaml",
-    "benchmark": "npm run build && node dist/src/benchmark.js"
+    "benchmark": "npm run build && node dist/src/benchmark.js",
+    "codemod:publish": "npm run build && node scripts/publish-codemod.mjs"
   },
   "keywords": [
     "codemod",
