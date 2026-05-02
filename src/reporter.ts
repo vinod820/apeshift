@@ -27,6 +27,17 @@ export interface ReportOutput {
   jsonPath: string;
 }
 
+/**
+ * CLI / report line: Brownie pattern hits detected vs transform applications (can exceed pattern count).
+ */
+export function formatAutomationSummary(patternsDetected: number, transformApplications: number): string {
+  const pct =
+    patternsDetected > 0
+      ? `${Math.min(Math.round((transformApplications / patternsDetected) * 100), 100)}%`
+      : "N/A";
+  return `${patternsDetected} patterns detected, ${transformApplications} transforms applied (${pct})`;
+}
+
 export function calculateConfidenceScore(input: Pick<ReportInput, "patternsAutomated" | "patternsTotal" | "validation">): number {
   const automationRatio = input.patternsTotal > 0 ? Math.min(input.patternsAutomated / input.patternsTotal, 1) : 0;
   const base = automationRatio * 70;
@@ -47,7 +58,7 @@ ApeShift: {{apeshiftVersion}}
 | Metric | Value |
 |---|---:|
 | Files changed | {{filesChanged}} |
-| Patterns automated | {{patternsAutomatedSummary}} |
+| Automation | {{patternsAutomatedSummary}} |
 | Confidence score | {{score}}% |
 
 ## Transform Breakdown
@@ -88,11 +99,9 @@ Validation skipped: {{validation.skipReason}}
 export async function generateReport(input: ReportInput, outputDir: string): Promise<ReportOutput> {
   await fs.mkdir(outputDir, { recursive: true });
   const score = calculateConfidenceScore(input);
-  const automatedPercent = input.patternsTotal > 0 ? Math.min(Math.round((input.patternsAutomated / input.patternsTotal) * 100), 100) : null;
-  const patternsAutomatedSummary =
-    automatedPercent === null
-      ? `${input.patternsAutomated} / ${input.patternsTotal} (N/A)`
-      : `${input.patternsAutomated} / ${input.patternsTotal} (${automatedPercent}%)`;
+  const automatedPercent =
+    input.patternsTotal > 0 ? Math.min(Math.round((input.patternsAutomated / input.patternsTotal) * 100), 100) : null;
+  const patternsAutomatedSummary = formatAutomationSummary(input.patternsTotal, input.patternsAutomated);
   const view = {
     ...input,
     date: new Date().toISOString(),

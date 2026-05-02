@@ -5,6 +5,23 @@ import { generateReport } from "./reporter.js";
 import { transforms } from "./transforms/index.js";
 import { validateProject, type ValidationResult } from "./validator.js";
 
+/** Directories skipped entirely during discovery (heavy vendor/build trees). */
+export const SKIP_PROJECT_DIR_NAMES = new Set([
+  ".git",
+  "node_modules",
+  ".venv",
+  "venv",
+  "apeshift-report",
+  ".build",
+  ".cache",
+  "__pycache__",
+  ".brownie",
+  "dist",
+  "build",
+]);
+
+const LARGE_PROJECT_PY_THRESHOLD = 100;
+
 export interface MigrationResult {
   filesScanned: number;
   filesChanged: number;
@@ -16,24 +33,81 @@ export interface MigrationResult {
   validation: ValidationResult;
 }
 
-async function listPythonFiles(dir: string): Promise<string[]> {
-  const files = await listProjectFiles(dir);
-  return files.filter((file) => file.endsWith(".py"));
+export interface MigrateOptions {
+  skipValidation?: boolean;
+  /** Skip the large-project confirmation prompt (required in non-TTY when >100 Python files). */
+  yes?: boolean;
+  /** Throttled progress while collecting `.py` files; final argument is the total count. */
+  onScanProgress?: (pyCountSoFar: number) => void;
 }
 
-async function listProjectFiles(dir: string): Promise<string[]> {
-  const entries = await fs.readdir(dir, { withFileTypes: true });
-  const files = await Promise.all(
-    entries.map(async (entry) => {
-      const full = path.join(dir, entry.name);
+/**
+ * Recursively collect `.py` paths only — never enumerates `.sol`/`.vy`/etc., and skips heavy dirs.
+ * @param onScanProgress optional; called with running count (throttled) and once with final total.
+ */
+export async function collectPythonFiles(
+  dir: string,
+  onScanProgress?: (pyCountSoFar: number) => void,
+): Promise<string[]> {
+  const out: string[] = [];
+  let lastReported = 0;
+  const report = () => {
+    if (!onScanProgress) return;
+    const n = out.length;
+    if (n === 1 || n - lastReported >= 10) {
+      lastReported = n;
+      onScanProgress(n);
+    }
+  };
+
+  async function walk(current: string): Promise<void> {
+    let entries;
+    try {
+      entries = await fs.readdir(current, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      const full = path.join(current, entry.name);
       if (entry.isDirectory()) {
-        if ([".git", "node_modules", ".venv", "venv", "apeshift-report"].includes(entry.name)) return [];
-        return listProjectFiles(full);
+        if (SKIP_PROJECT_DIR_NAMES.has(entry.name)) continue;
+        await walk(full);
+        continue;
       }
-      return entry.isFile() ? [full] : [];
-    }),
+      if (entry.isFile() && entry.name.endsWith(".py")) {
+        out.push(full);
+        report();
+      }
+    }
+  }
+
+  await walk(path.resolve(dir));
+  onScanProgress?.(out.length);
+  return out.sort();
+}
+
+async function confirmLargeProject(pyCount: number, options: { yes?: boolean }): Promise<void> {
+  if (pyCount <= LARGE_PROJECT_PY_THRESHOLD) return;
+  console.warn(
+    `⚠️  Large project: ${pyCount} Python files (threshold: ${LARGE_PROJECT_PY_THRESHOLD}). Migration will touch many files.`,
   );
-  return files.flat();
+  if (options.yes) return;
+  if (process.stdin.isTTY && process.stdout.isTTY) {
+    const readline = await import("node:readline/promises");
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    try {
+      const answer = await rl.question("Continue migration? [y/N] ");
+      if (!/^y(es)?$/i.test(answer.trim())) {
+        throw new Error("Migration cancelled.");
+      }
+    } finally {
+      rl.close();
+    }
+  } else {
+    throw new Error(
+      `Non-interactive environment: ${pyCount} Python files exceeds threshold. Re-run with --yes to confirm.`,
+    );
+  }
 }
 
 async function countBrowniePatterns(files: string[]): Promise<number> {
@@ -102,10 +176,23 @@ async function cleanupBaseCodemodOutput(files: string[]): Promise<void> {
   }
 }
 
+function migrateAccountsAdd(source: string, normalizedPath: string): string {
+  let next = source.replace(
+    /accounts\.add\s*\(\s*config\s*\[\s*["']wallets["']\s*\]\s*\[\s*["']from_key["']\s*\]\s*\)(\s*#\s*TODO\(apeshift\)[^\n]*)?/g,
+    () => `accounts.load("deployer")`,
+  );
+  const isTestFile = /\/tests?\//.test(normalizedPath);
+  next = next.replace(/\baccounts\.add\s*\(\s*\)(\s*#\s*TODO\(apeshift\)[^\n]*)?/g, () =>
+    isTestFile ? `accounts.test_accounts[1]` : `accounts.load("deployer")`,
+  );
+  return next;
+}
+
 function cleanupRuntimeSafetyByPath(file: string, source: string): string {
   const normalized = file.replace(/\\/g, "/");
-  let next = source.replace(/^\s*[A-Za-z_][A-Za-z0-9_]*\.wait\([^)\n]*\)\s*$/gm, "");
-  next = next.replace(/\b(\d+)e(\d+)\b/g, (_match, coefficient: string, exponent: string) => `${coefficient} * 10**${exponent}`);
+  let next = migrateAccountsAdd(source, normalized);
+  next = next.replace(/^\s*.+\.wait\s*\([^)]*\)\s*$/gm, "");
+  // Scientific notation normalization is handled in numericTransform (avoid `/ 1e8` → `/ 1 * 10**8`).
   next = next.replace(/\blen\(([A-Z][A-Za-z0-9_]*)\)/g, (_match, contract: string) => `len(project.${contract}.deployments)`);
   next = next.replace(
     /(LOCAL_BLOCKCHAIN_ENVIRONMENTS\s*=\s*\[)([^\]\n]*)(\])/g,
@@ -220,11 +307,11 @@ function skippedValidationResult(skipReason: string): ValidationResult {
   };
 }
 
-export async function migrate(projectDir: string, options: { skipValidation?: boolean } = {}): Promise<MigrationResult> {
+export async function migrate(projectDir: string, options: MigrateOptions = {}): Promise<MigrationResult> {
   const root = path.resolve(projectDir);
-  const projectFiles = await listProjectFiles(root);
-  const patternsTotal = await countBrowniePatterns(projectFiles);
-  const files = await listPythonFiles(root);
+  const files = await collectPythonFiles(root, options.onScanProgress);
+  await confirmLargeProject(files.length, { yes: options.yes });
+  const patternsTotal = await countBrowniePatterns(files);
   const transformCounts: Record<string, number> = Object.fromEntries(transforms.map((t) => [t.name, 0]));
   let filesChanged = 0;
   let patternsAutomated = 0;

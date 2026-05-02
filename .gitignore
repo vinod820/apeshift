@@ -1,5 +1,6 @@
 node_modules/
 dist/
+tools/
 test-repos/
 test-repos-pristine/
 benchmark-cache/

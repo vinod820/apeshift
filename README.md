@@ -23,6 +23,18 @@ node dist/src/cli.js migrate ./my-brownie-project --skip-validation
 
 Validated locally against five real Brownie repositories with Ape `0.8.48`, `ape-solidity 0.8.5`, and `ape-vyper 0.8.10`.
 
+**Benchmark clone URLs** (use these — `smartcontractkit/brownie_fund_me`, `brownie_simple_storage`, and `nft-mix` do not exist on GitHub):
+
+| Repository             | `git clone` URL |
+|------------------------|-----------------|
+| brownie_simple_storage | https://github.com/PatrickAlphaC/brownie_simple_storage |
+| brownie_fund_me        | https://github.com/PatrickAlphaC/brownie_fund_me |
+| chainlink-mix          | https://github.com/smartcontractkit/chainlink-mix |
+| token-mix              | https://github.com/brownie-mix/token-mix |
+| nft-mix                | https://github.com/PatrickAlphaC/nft-mix |
+
+These match `src/benchmark.ts` (`brownie-nft-course` → `PatrickAlphaC/nft-mix`).
+
 | Repository             | Files | Patterns | Auto% | FP | Compile  | Test      | Status                     |
 |------------------------|-------|----------|-------|----|----------|-----------|----------------------------|
 | brownie_simple_storage | 4     | 13       | 100%  | 0  | PASS     | 2/2       | FULL PASS                  |

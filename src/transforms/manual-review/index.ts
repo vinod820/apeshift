@@ -12,6 +12,10 @@ export const manualReviewTransform: TransformModule = {
     const next = source
       .split(/\r?\n/)
       .map((line) => {
+        const trimmed = line.trimStart();
+        if (trimmed.startsWith("#")) {
+          return line;
+        }
         if (/tx\.events\[0\]\["[A-Za-z_][A-Za-z0-9_]*"\]/.test(line) && !line.includes("TODO(apeshift)")) {
           count += 1;
           return appendTodo(line, "# TODO(apeshift): use tx.events.filter(Contract.EventName)[0].field");
@@ -19,13 +23,6 @@ export const manualReviewTransform: TransformModule = {
         if (line.includes("exceptions.VirtualMachineError") && !line.includes("TODO(apeshift)")) {
           count += 1;
           return appendTodo(line, "# TODO(apeshift): verify ContractLogicError replacement");
-        }
-        if (/\baccounts\.add\([^)]*\)/.test(line) && !line.includes("TODO(apeshift)")) {
-          count += 1;
-          return appendTodo(
-            line,
-            '# TODO(apeshift): accounts.add(key) not valid in Ape; use accounts.load("account-name") after: ape accounts import <name>',
-          );
         }
         return line;
       })

@@ -32,4 +32,16 @@ describe("accounts sender dict transform", () => {
     expect(result.source).toBe("contract.fn(sender=accounts[0])");
     expect(result.source).not.toContain("TODO(apeshift)");
   });
+
+  it("rewrites trailing {\"from\": ...} dict on its own continuation line", () => {
+    const input = [
+      "Token.deploy(",
+      "    a,",
+      '    {"from": account},',
+      ")",
+    ].join("\n");
+    const result = accountsTransform.apply(input);
+    expect(result.source).toContain("sender=account");
+    expect(result.source).not.toContain('"from"');
+  });
 });

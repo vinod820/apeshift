@@ -1,4 +1,11 @@
 import type { TransformModule, TransformResult } from "../types.js";
+import {
+  findClosingParenBalanced,
+  getPythonMaskedRanges,
+  overlapsMasked,
+  replaceAllRegexOutsideComments,
+  replaceAllRegexOutsideMasked,
+} from "../py-mask.js";
 
 const brownieNames = new Set([
   "accounts",
@@ -119,7 +126,7 @@ function ensureExceptionImport(source: string): string {
 }
 
 function convertSenderDicts(source: string): TransformResult {
-  let count = 0;
+  let total = 0;
   const patterns: Array<[RegExp, string]> = [
     [/,?\s*\{\s*["']from["']\s*:\s*([^,}\n]+)\s*,\s*["']value["']\s*:\s*([^,}\n]+)\s*\}/g, ", value=$2, sender=$1"],
     [/,?\s*\{\s*["']value["']\s*:\s*([^,}\n]+)\s*,\s*["']from["']\s*:\s*([^,}\n]+)\s*\}/g, ", value=$1, sender=$2"],
@@ -129,13 +136,38 @@ function convertSenderDicts(source: string): TransformResult {
   ];
   let next = source;
   for (const [pattern, replacement] of patterns) {
-    next = next.replace(pattern, (...args: string[]) => {
-      count += 1;
-      return replacement.replace(/\$(\d+)/g, (_token, index) => args[Number(index)] ?? "");
-    });
+    const r = replaceAllRegexOutsideComments(next, pattern, (m) =>
+      replacement.replace(/\$(\d+)/g, (_token, index) => m[Number(index)] ?? ""),
+    );
+    next = r.source;
+    total += r.count;
   }
-  next = next.replace(/\(\s*,\s*(sender|value|gas_limit|gas_price)=/g, "($1=");
-  return { source: next, count };
+  const paren = replaceAllRegexOutsideComments(next, /\(\s*,\s*(sender|value|gas_limit|gas_price)=/g, (m) => `(${m[1]}=`);
+  next = paren.source;
+  total += paren.count;
+  return { source: next, count: total };
+}
+
+/** When sender= was merged into trailing #-comment text, move it to a real continuation line. */
+function repairSenderKwargTrappedInComment(source: string): TransformResult {
+  const lines = source.split(/\r?\n/);
+  let count = 0;
+  const out = lines.map((line) => {
+    const idx = line.indexOf("#");
+    if (idx === -1) return line;
+    const beforeHash = line.slice(0, idx);
+    const afterHash = line.slice(idx + 1);
+    const sm = afterHash.match(/^(.*?),\s*sender\s*=\s*([A-Za-z_]\w*)\s*,?\s*$/);
+    if (!sm) return line;
+    const commentLead = sm[1]?.trim() ?? "";
+    if (!commentLead) return line;
+    const senderName = sm[2] ?? "";
+    const indentMatch = line.match(/^(\s*)/);
+    const indent = indentMatch?.[1] ?? "";
+    count += 1;
+    return `${beforeHash}# ${commentLead}\n${indent}sender=${senderName},`;
+  });
+  return { source: out.join("\n"), count };
 }
 
 function convertAccounts(source: string): TransformResult {
@@ -154,7 +186,7 @@ function convertNetworks(source: string): TransformResult {
     count += 1;
     return "from ape import networks";
   });
-  next = next.replace(/\bnetwork\.show_active\(\)/g, () => {
+  next = next.replace(/\bnetwork\s*\.\s*show_active\s*\(\s*\)/g, () => {
     count += 1;
     return "networks.provider.network.name";
   });
@@ -168,15 +200,7 @@ function convertPlainBrownieImports(source: string): TransformResult {
     count += 1;
     return "import ape";
   });
-  next = next.replace(/^from brownie\.network import priority_fee$/gm, () => {
-    count += 1;
-    return "# TODO(apeshift): Ape does not export Brownie's priority_fee helper; configure gas fees via the active provider";
-  });
-  next = next.replace(/^\s*priority_fee\((.*)\)$/gm, (line) => {
-    count += 1;
-    const indent = line.match(/^\s*/)?.[0] ?? "";
-    return `${indent}# TODO(apeshift): replace Brownie priority_fee(${line.replace(/^\s*priority_fee\(|\)$/g, "")}) with Ape provider fee configuration`;
-  });
+  // Leave Brownie `priority_fee` imports/calls untouched — replacing calls with TODO-only lines is unsafe (FP3).
   return { source: next, count };
 }
 
@@ -191,12 +215,69 @@ function convertProjectDeploys(source: string): TransformResult {
 }
 
 function convertInterfaceCalls(source: string): TransformResult {
-  let count = 0;
-  const next = source.replace(/\binterface\.([A-Za-z_][A-Za-z0-9_]*)\(([^)\n]+)\)/g, (_match, name: string, address: string) => {
-    count += 1;
-    return `project.${name}.at(${address})`;
-  });
+  const { source: next, count } = replaceAllRegexOutsideMasked(
+    source,
+    /\binterface\.([A-Za-z_][A-Za-z0-9_]*)\(([^)\n]+)\)/g,
+    (m) => `project.${m[1] ?? ""}.at(${m[2] ?? ""})`,
+  );
   return { source: count > 0 ? ensureApeImport(next, ["project"]) : next, count };
+}
+
+function splitTopLevelArgs(inner: string): string[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let start = 0;
+  let inStr: '"' | "'" | null = null;
+  for (let i = 0; i < inner.length; i++) {
+    const ch = inner[i];
+    if (inStr) {
+      if (ch === "\\") {
+        i += 1;
+        continue;
+      }
+      if (ch === inStr) inStr = null;
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      inStr = ch;
+      continue;
+    }
+    if (ch === "(" || ch === "[") depth += 1;
+    if (ch === ")" || ch === "]") depth -= 1;
+    if (ch === "," && depth === 0) {
+      parts.push(inner.slice(start, i));
+      start = i + 1;
+    }
+  }
+  parts.push(inner.slice(start));
+  return parts.map((p) => p.trim()).filter(Boolean);
+}
+
+function convertContractFromAbi(source: string): TransformResult {
+  const ranges = getPythonMaskedRanges(source);
+  const needle = /\bContract\.from_abi\s*\(/g;
+  let count = 0;
+  let out = "";
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = needle.exec(source)) !== null) {
+    const idx = m.index;
+    if (overlapsMasked(idx, m[0].length, ranges)) continue;
+    const openParen = idx + m[0].length - 1;
+    const closeIdx = findClosingParenBalanced(source, openParen, ranges);
+    if (closeIdx === null) continue;
+    const inner = source.slice(openParen + 1, closeIdx);
+    const args = splitTopLevelArgs(inner);
+    if (args.length < 2) continue;
+    const addr = args[1]!.trim();
+    out += source.slice(last, idx);
+    out += `Contract.at(${addr})  # TODO(apeshift): verify ABI — contract_type._name and .abi ignored`;
+    last = closeIdx + 1;
+    count += 1;
+  }
+  out += source.slice(last);
+  const next = count > 0 ? ensureApeImport(out, ["Contract"]) : out;
+  return { source: next, count };
 }
 
 function convertWeb3ContractFactory(source: string): TransformResult {
@@ -260,6 +341,27 @@ function convertContractDeployments(source: string): TransformResult {
   return { source: next, count };
 }
 
+/** Bare contract-class uses that must be project.-qualified (publish_source, verification, subscripts). */
+function prefixBareContractArtifacts(source: string): TransformResult {
+  const contractNames = collectContractNames(source);
+  let total = 0;
+  let next = source;
+  for (const name of contractNames) {
+    if (name === "Contract") continue;
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    for (const [pattern, repl] of [
+      [new RegExp(`(?<!\\.)\\b${escaped}\\.publish_source\\(`, "g"), `project.${name}.publish_source(`],
+      [new RegExp(`(?<!\\.)\\b${escaped}\\.get_verification_info\\(`, "g"), `project.${name}.get_verification_info(`],
+      [new RegExp(`(?<!\\.)\\b${escaped}\\[`, "g"), `project.${name}[`],
+    ] as const) {
+      const r = replaceAllRegexOutsideMasked(next, pattern, () => repl);
+      next = r.source;
+      total += r.count;
+    }
+  }
+  return { source: total > 0 ? ensureApeImport(next, ["project"]) : next, count: total };
+}
+
 function normalizeApeImports(source: string): TransformResult {
   const lines = source.split(/\r?\n/);
   const names = new Set<string>();
@@ -309,13 +411,16 @@ function normalizeApeImports(source: string): TransformResult {
 
 const cleanupSteps = [
   convertSenderDicts,
+  repairSenderKwargTrappedInComment,
   convertPlainBrownieImports,
   convertAccounts,
   convertNetworks,
   convertInterfaceCalls,
+  convertContractFromAbi,
   convertWeb3ContractFactory,
   convertContractNames,
   convertProjectDeploys,
+  prefixBareContractArtifacts,
   convertContractDeployments,
   convertRemainingEdges,
   removeMigratedBrownieImports,

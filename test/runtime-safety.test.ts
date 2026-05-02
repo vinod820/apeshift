@@ -46,10 +46,10 @@ describe("runtime safety", () => {
     expect(source).not.toContain("{'from':");
   });
 
-  it("removes invalid interface and Brownie priority_fee imports", () => {
+  it("migrates interface but keeps priority_fee as Brownie import/call (no TODO-only line)", () => {
     const source = applyAll("from brownie import interface\nfrom brownie.network import priority_fee\npriority_fee('1 gwei')\n");
     expect(source).not.toContain("from ape import interface");
-    expect(source).not.toContain("from brownie.network import priority_fee");
-    expect(source).toContain("TODO(apeshift)");
+    expect(source).toContain("from brownie.network import priority_fee");
+    expect(source).toContain("priority_fee('1 gwei')");
   });
 });

@@ -283,7 +283,7 @@ async function main(): Promise<void> {
     const patternsBefore = await countPatterns(source);
     console.log(`${repo}: original patterns before migration=${patternsBefore}`);
     await copyDir(source, target);
-    const migration = await migrate(target, { skipValidation: true });
+    const migration = await migrate(target, { skipValidation: true, yes: true });
     const residualPatterns = await countPatterns(target);
     const patternsAfter = residualPatterns;
     const pyFiles = await listFiles(target, ".py");
