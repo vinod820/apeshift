@@ -1,8 +1,0 @@
-networks:
-  default: development
-dependencies:
-  - OpenZeppelin/openzeppelin-contracts@4.8.0
-compiler:
-  solc:
-    remappings:
-      - '@openzeppelin=OpenZeppelin/openzeppelin-contracts@4.8.0'

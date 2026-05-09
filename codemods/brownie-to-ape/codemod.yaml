@@ -1,0 +1,22 @@
+schema_version: "1.0"
+
+name: "@ApeWorX/brownie-to-ape"
+version: "1.0.0"
+description: "Production-grade Brownie to Ape Framework migration codemod."
+author: "ApeWorX contributors"
+license: "MIT"
+repository: https://github.com/vinod820/brownie-to-ape
+
+targets:
+  languages: ["python"]
+
+keywords:
+  - "migration"
+  - "brownie"
+  - "ape"
+  - "ethereum"
+  - "python"
+
+registry:
+  access: "public"
+  visibility: "public"

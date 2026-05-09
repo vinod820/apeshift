@@ -1,0 +1,14 @@
+{
+  "migrated_import": [
+    {
+      "cardinality": {},
+      "count": 1
+    }
+  ],
+  "migrated_sender": [
+    {
+      "cardinality": {},
+      "count": 1
+    }
+  ]
+}

@@ -1,5 +1,38 @@
+# Dependencies
 node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build artifacts
+target/
 dist/
+build/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Environment files
+.env
+.env.local
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Package bundles
+*.tar.gz
+*.tgz
+
+# Project-specific
 tools/
 test-repos/
 test-repos-pristine/
@@ -7,10 +40,16 @@ benchmark-cache/
 test-results/
 apeshift-report/
 *.log
-.env
 .venv/
 __pycache__/
 *.pyc
+*.pyo
 .tmp/
 .real-world/
 _codemod_staging/
+brownie-to-ape.zip
+.cursor/
+AGENTS.md
+CHANGELOG.md
+docs/
+publish-codemod.mjs
