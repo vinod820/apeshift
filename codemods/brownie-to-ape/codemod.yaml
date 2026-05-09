@@ -1,7 +1,7 @@
 schema_version: "1.0"
 
 name: "@ApeWorX/brownie-to-ape"
-version: "1.0.0"
+version: "1.1.0"
 description: "Production-grade Brownie to Ape Framework migration codemod."
 author: "ApeWorX contributors"
 license: "MIT"
