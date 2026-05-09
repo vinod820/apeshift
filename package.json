@@ -1,15 +1,47 @@
 {
-  "name": "brownie-to-ape",
-  "private": true,
-  "description": "Brownie to Ape Framework migration codemods (ApeWorX).",
-  "scripts": {
-    "test": "pnpm -r test",
-    "check-types": "pnpm -r check-types",
-    "changeset": "changeset",
-    "version-packages": "changeset version && bash scripts/sync-codemod-versions.sh"
+  "name": "apeshift",
+  "version": "1.0.1",
+  "description": "Production-grade Brownie to Ape migration: validation, reporting, and official ApeWorX adoption.",
+  "type": "module",
+  "bin": {
+    "apeshift": "./dist/src/cli.js"
   },
-  "packageManager": "pnpm@10.19.0",
+  "files": [
+    "dist",
+    "src/transforms/**/*.yaml",
+    "workflow.yaml",
+    ".codemodrc.json",
+    "docs"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run --pool=threads --poolOptions.threads.singleThread=true",
+    "typecheck": "tsc --noEmit",
+    "codemod:validate": "codemod workflow validate -w workflow.yaml",
+    "benchmark": "npm run build && node dist/src/benchmark.js",
+    "codemod:publish": "npm run build && node scripts/publish-codemod.mjs"
+  },
+  "keywords": [
+    "codemod",
+    "jssg",
+    "ast-grep",
+    "brownie",
+    "ape",
+    "ethereum"
+  ],
+  "author": "Boring AI Hackathon",
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^12.1.0",
+    "execa": "^9.5.2",
+    "handlebars": "^4.7.8"
+  },
   "devDependencies": {
-    "@changesets/cli": "^2.30.0"
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

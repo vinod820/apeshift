@@ -1,0 +1,84 @@
+id: apeshift-manual-web3-contract
+language: Python
+message: Flag web3.eth.contract for manual Ape contract migration.
+severity: warning
+rule:
+  pattern: web3.eth.contract($$$ARGS)
+fix: "web3.eth.contract($$$ARGS)  # TODO(apeshift): replace with ape contract pattern"
+files:
+  - "**/*.py"
+url: "https://docs.apeworx.io/ape/stable/userguides/contracts.html"
+metadata:
+  transformGroup: "manual-review"
+---
+id: apeshift-manual-accounts-add
+language: Python
+message: Flag accounts.add() because Ape live accounts must be imported and loaded by alias.
+severity: warning
+rule:
+  pattern: accounts.add($$$ARGS)
+fix: "accounts.add($$$ARGS)  # TODO(apeshift): accounts.add(key) not valid in Ape; use accounts.load(\"account-name\") after: ape accounts import <name>"
+files:
+  - "**/*.py"
+url: "https://docs.apeworx.io/ape/stable/userguides/accounts.html"
+metadata:
+  transformGroup: "manual-review"
+  zeroFalsePositivePolicy: "Account aliases are human choices; ApeShift flags accounts.add() without selecting an alias."
+---
+id: apeshift-manual-positional-events
+language: Python
+message: Flag positional event access for manual Ape event migration.
+severity: warning
+rule:
+  pattern: tx.events[0][$FIELD]
+fix: "tx.events[0][$FIELD]  # TODO(apeshift): use tx.events.filter(Contract.EventName)[0].field"
+files:
+  - "**/*.py"
+url: "https://docs.apeworx.io/ape/stable/userguides/contracts.html"
+metadata:
+  transformGroup: "manual-review"
+---
+id: apeshift-manual-vm-error
+language: Python
+message: Flag complex Brownie VirtualMachineError access for manual Ape exception migration.
+severity: warning
+rule:
+  pattern: exceptions.VirtualMachineError
+fix: "exceptions.VirtualMachineError  # TODO(apeshift): verify ContractLogicError replacement"
+files:
+  - "**/*.py"
+url: "https://docs.apeworx.io/ape/latest/userguides/testing.html"
+metadata:
+  transformGroup: "manual-review"
+---
+id: apeshift-manual-priority-fee
+language: Python
+message: Flag Brownie priority_fee usage for manual Ape provider fee configuration.
+severity: warning
+rule:
+  any:
+    - pattern: from brownie.network import priority_fee
+    - pattern: priority_fee($$$ARGS)
+fix: "# TODO(apeshift): replace Brownie priority_fee with Ape provider fee configuration"
+files:
+  - "**/*.py"
+url: "https://docs.apeworx.io/ape/stable/userguides/networks.html"
+metadata:
+  transformGroup: "manual-review"
+---
+id: apeshift-manual-import-time-provider
+language: Python
+message: Flag import-time provider access; Ape providers may not be connected during test collection.
+severity: warning
+rule:
+  pattern: networks.provider.network.name
+  not:
+    inside:
+      kind: function_definition
+      stopBy: end
+fix: "networks.provider.network.name  # TODO(apeshift): move provider access inside a function or connected Ape script"
+files:
+  - "**/*.py"
+url: "https://docs.apeworx.io/ape/stable/userguides/scripts.html"
+metadata:
+  transformGroup: "manual-review"

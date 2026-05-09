@@ -1,0 +1,4 @@
+# Brownie config conversion is implemented in runner.ts.
+# No standalone ast-grep YAML rule is published because the registry
+# runner rejected the broad YAML regex used for detection-only review.
+# Dependency source-layout issues are reported, not guessed.

@@ -1,0 +1,23 @@
+schema_version: "1.0"
+
+name: "apeshift"
+version: "1.0.1"
+description: "Production-grade Brownie to Ape Framework migration workflow."
+author: "Boring AI Hackathon"
+license: "MIT"
+workflow: "workflow.yaml"
+category: "migration"
+
+targets:
+  languages: ["python", "yaml"]
+
+keywords:
+  - "cross-migration"
+  - "brownie"
+  - "ape"
+  - "ethereum"
+  - "ast-grep"
+
+registry:
+  access: "public"
+  visibility: "public"
